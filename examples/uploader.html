@@ -1,0 +1,50 @@
+<h1>Start</h1>
+
+<script src="../base/modern.js"></script>
+<script src="../core/core.js"></script>
+<script src="uploader.js"></script>
+
+
+<div id="drop" style="background-color:#ccc;height:500px;width:500px;">
+
+  <input type="file" />
+</div>
+
+
+<div class="progress">
+
+  <span class="loaded"></span> <br />
+  <span class="total"></span> <br />
+  <span class="percentage"></span>
+</div>
+
+
+<script>
+
+ var uploader = new Carbon.UploadManager({ 
+    url:        'https://uploads.carbonmade.com/',
+    method:     'POST',
+    uploadLimit: 100
+});
+
+uploader.addSource(new Carbon.FileDrop('#drop'));
+uploader.addSource(new Carbon.FileInput('input:first'), { accept: 'image/*', multiple: true });
+
+uploader.progress(function(e) {
+  $('.progress .loaded').text(e.loaded);
+  $('.progress .total').text(e.total);
+  $('.progress .percentage').text(Math.round(e.value * 100));
+});
+
+uploader.on('selection', function(e) {
+
+  uploader.start();
+});
+
+uploader.on({
+  done: function(e) {
+    alert('done');
+  }
+});
+
+</script>

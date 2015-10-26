@@ -1,0 +1,14 @@
+{
+  "compilerOptions": {
+    "target": "es5",
+    "module": "commonjs",
+    "removeComments": true,
+    "watch": false,
+    "sourceMap": false,
+    "outDir": "lib/"
+  },
+  "files": [
+    "src/dropbox.chooser.ts",
+    "src/uploader.ts"
+  ]
+}

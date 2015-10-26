@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Dropbox Tests</title>
+
+
+
+
+
+</head>
+<body>
+
+  <div class="choose" style="font-size:24px;padding:20px;">
+  choose
+  </div>
+
+  <script src="../base/modern.js"></script>
+  <script src="../lib/uploader.js"></script>
+  <script src="../lib/dropbox.chooser.js"></script>
+
+
+  <script>
+    var dropbox = null;
+    $('.choose').on('mouseover', function() {
+
+      if (!dropbox) {
+        dropbox = new Carbon.DropboxChooser();
+
+         dropbox.subscribe(function(uploads) {
+            var promises = uploads.map(function(u) { return u.start(); });
+
+            Promise.all(promises).then(function() {
+              alert('uploaded ' + promises.length + ' files');
+            });
+
+            for(var i = 0; i < uploads.length; i++) {
+              var upload = uploads[i];
+
+              upload.then(function(data) {
+                console.log(data);
+              });
+            }
+        });
+
+        dropbox.loadScript(function() {
+
+
+        });
+       }
+    });
+
+    $('.choose').on('click', function() {
+
+      if (!dropbox) {
+
+       alert('not setup');
+
+
+      }
+
+      dropbox.open();
+
+    });
+  </script>
+
+
+</body>
+</html>
