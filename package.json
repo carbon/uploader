@@ -1,6 +1,6 @@
 {
   "name": "uploader",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "main": "lib/uploader.js",
   "author": "Jason Nelson",
   "license": "MIT",

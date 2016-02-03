@@ -482,6 +482,7 @@ module Carbon {
     reactive = new Carbon.Reactive();
     
     defer = new _.Deferred<any>();
+    promise: Promise<any>;
     
     constructor(file, options: UploadOptions) {
       if (!file) throw new Error('file is empty');
@@ -495,12 +496,11 @@ module Carbon {
       // note: progress is already implemented by deferred
       this.progress = new Progress(0, this.size);
 
-      // Options
-
       this.method = options.method || 'POST';
       this.url = options.url;
-
       this.baseUri = this.url;
+      
+      this.promise = this.defer.promise;
     }
 
     on(name, callback) {
@@ -793,7 +793,7 @@ module Carbon {
 
       let target = <HTMLElement>e.target;
 
-      var dropElement = this.getDropElement(target);
+      let dropElement = this.getDropElement(target);
 
       if (dropElement) {
         // Force hide all other drop elements
@@ -851,8 +851,6 @@ module Carbon {
       }
       
       _.trigger(detail.element, 'carbon:drop', detail);
-     
-      Carbon.Reactive.trigger('drop', detail);    
     }
 
     getDropElement(target: HTMLElement) {
@@ -1056,7 +1054,7 @@ module Carbon {
   }
 
   var Util = {
-    fitIn(width, height, maxWidth, maxHeight) {
+    fitIn(width: number, height: number, maxWidth: number, maxHeight: number) {
     	if (height <= maxHeight && width <= maxWidth) {
     		return { width: width, height: height }
     	}
@@ -1083,13 +1081,13 @@ module Carbon {
   var FileUtil = {
     scales: ['B', 'KB', 'MB', 'GB'],
 
-    getFormatFromName(name) {
+    getFormatFromName(name: string) {
       var split = name.split('.');
 
       return split[split.length - 1];
     },
 
-    threeNonZeroDigits(value) {
+    threeNonZeroDigits(value: number) {
       if (value >= 100) return parseInt(value, 10);
 
       if (value >= 10) {
@@ -1173,9 +1171,9 @@ module Carbon {
     progress: Progress = new Progress(0, 100);
     defer = new _.Deferred<any>();
     response: UploadResponse;
-
     reactive = new Carbon.Reactive();
-
+    promise: Promise<any>;
+    
     constructor(url) {
       this.url = url;
       this.status = 0;
@@ -1183,7 +1181,9 @@ module Carbon {
       var format = this.url.substring(this.url.lastIndexOf('.') + 1);
 
       this.type = fileFormats[format] + '/' + format;
-
+      
+      this.promise = this.defer.promise;
+      
       // TODO, add id & open up web socket to monitor progress
     }
 
