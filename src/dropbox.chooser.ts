@@ -6,14 +6,18 @@ module Carbon {
 
     // to defined by subclasses
     _open() {};
-    loadScript(callback: Function) {};
+    
+    loadScript(): Promise<any> {
+      return Promise.resolve(true);
+    };
 
     open() {
       console.log('open');
 
       if (!this.loaded) {
-        this.loadScript(this._open.bind(this));
-      } else {
+        this.loadScript().then(this._open.bind(this));
+      } 
+      else {
         this._open();
       }
     }
@@ -42,41 +46,42 @@ module Carbon {
       });
     }
 
-    onCancel() {}
+    onCancel() { }
 
     onSelection (files) {
-      var uploads = files.map(file => {
-        return new Carbon.UrlUpload(file.link);
-      });
+      let uploads = files.map(file => new Carbon.UrlUpload(file.link));
+      
       this.reactive.trigger(uploads);
     }
 
-    loadScript(callback: Function) {
-      console.log('load script');
+    loadScript():  Promise<any> {
+      if (this.loaded) return Promise.resolve(true);
+      
+      console.log('loading dropbox');
+            
+       this.loading = true;
+       
+      return new Promise((resolve, reject) => {
+        let el = document.createElement('script');
+        
+        el.id = "dropboxjs"
+        el.type = "text/javascript";
+        el.async = true;
+        el.setAttribute('data-app-key', this.key);
 
-      if (this.loading) return;
+        el.addEventListener('load', e => {
+          this.loaded = true;
+          this.loading = false;
 
-      this.loading = true;
+          resolve();
+        }, false);
 
-      var el = document.createElement('script');
-      el.id = "dropboxjs"
-      el.type = "text/javascript";
-      el.async = true;
-      el.setAttribute('data-app-key', this.key);
+        el.src = 'https://www.dropbox.com/static/api/2/dropins.js';
 
-      el.addEventListener('load', e => {
-        console.log('loaded');
-
-        this.loaded = true;
-        this.loading = false;
-
-        callback();
-      }, false);
-
-      el.src = 'https://www.dropbox.com/static/api/2/dropins.js';
-
-      var headEl = document.getElementsByTagName('head')[0];
-      headEl.appendChild(el);
+        let headEl = document.getElementsByTagName('head')[0];
+        
+        headEl.appendChild(el);
+      });
     }
   }
 }

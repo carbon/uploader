@@ -1,11 +1,12 @@
 {
   "name": "uploader",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "main": "lib/uploader.js",
   "author": "Jason Nelson",
   "license": "MIT",
   "files": [
-    "lib/exif.js"
+    "lib/exif.js",
+    "lib/dropbox.chooser.js"
   ],
   "repository": {
     "type": "git",

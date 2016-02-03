@@ -1,50 +1,66 @@
 <h1>Start</h1>
 
-<script src="../base/modern.js"></script>
-<script src="../core/core.js"></script>
-<script src="uploader.js"></script>
-
+<script src="	https://da12rf4xga553.cloudfront.net/libs/basejs/1.2.0/basejs.js"></script>
+<script src="https://da12rf4xga553.cloudfront.net/libs/corejs/1.2.1/corejs.js"></script>
+<script src="../lib/uploader.js"></script>
 
 <div id="drop" style="background-color:#ccc;height:500px;width:500px;">
-
   <input type="file" />
 </div>
 
 
 <div class="progress">
-
-  <span class="loaded"></span> <br />
-  <span class="total"></span> <br />
+  <div><span class="loaded"></span> / <span class="total"></span></div>
+  
   <span class="percentage"></span>
 </div>
 
-
 <script>
-
- var uploader = new Carbon.UploadManager({ 
-    url:        'https://uploads.carbonmade.com/',
-    method:     'POST',
-    uploadLimit: 100
+var uploader = new Carbon.UploadManager({ 
+  url         : 'https://uploads.carbonmade.com/',
+  method      : 'POST',
+  uploadLimit : 100
 });
 
 uploader.addSource(new Carbon.FileDrop('#drop'));
-uploader.addSource(new Carbon.FileInput('input:first'), { accept: 'image/*', multiple: true });
+uploader.addSource(new Carbon.FileInput('input'), { accept: 'image/*', multiple: true });
 
-uploader.progress(function(e) {
+uploader.on('progress', e => {
   $('.progress .loaded').text(e.loaded);
   $('.progress .total').text(e.total);
   $('.progress .percentage').text(Math.round(e.value * 100));
 });
 
-uploader.on('selection', function(e) {
-
+uploader.on('add', e => {
+  console.log('added', e);
+  
   uploader.start();
 });
 
 uploader.on({
-  done: function(e) {
+  complete(e) {
     alert('done');
+    
+    var u = e.uploads[0];
+    
+    console.log(e.uploads[0]);
+      
+    setTimeout(() => {
+
+      
+      u.defer.promise.then(function() { 
+        
+          
+      });
+      
+    }, 1000);
+    
+    
+ 
   }
+
+ 
+
 });
 
 </script>

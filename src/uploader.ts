@@ -1,18 +1,14 @@
+"use strict";
+
 module Carbon {
-  "use strict";
-
-  // W3 Progress Event
   export class Progress {
-    loaded: number;
-    total: number;
-
-    constructor(loaded: number, total: number) {
+    constructor(public loaded: number, public total: number) {
       this.loaded = loaded;
       this.total = total;
     }
 
     get value() {
-      return (this.total != 0) ? this.loaded / this.total : 0;
+      return this.total !== 0 ? (this.loaded / this.total) : 0;
     }
 
     toString() {
@@ -25,17 +21,15 @@ module Carbon {
     percentEl: HTMLElement;
     inversed: boolean;
 
-    constructor(element) {
-      var el = $(element)[0];
-
-      this.barEl     = el.querySelector('.bar');
-      this.percentEl = el.querySelector('.percent');
+    constructor(element: HTMLElement) {
+      this.barEl     = <HTMLElement>element.querySelector('.bar');
+      this.percentEl = <HTMLElement>element.querySelector('.percent');
 
       this.inversed = this.barEl.classList.contains('inversed');
     }
 
-    observe(manager) {
-      manager.progress(this.update.bind(this));
+    observe(manager: UploadManager) {
+      manager.on('progress', this.update.bind(this));
     }
 
     reset() {
@@ -43,12 +37,12 @@ module Carbon {
       this.percentEl.innerHTML = '0%';
     }
 
-    update(progress) {
+    update(progress: Progress) {
       this.setValue(progress.value);
     }
 
     setValue(value) {
-      var percent = Math.round(value * 100);
+      let percent = Math.round(value * 100);
 
       if (this.inversed) percent = 100 - percent;
 
@@ -61,21 +55,23 @@ module Carbon {
   }
 
   export class BatchProgressMeter {
-    element: any;
+    element: HTMLElement;
     width: number;
     meter: ProgressMeter;
 
     constructor(element: HTMLElement) {
-      this.element = $(element);
-      this.width = this.element.width();
+      this.element = element;
+      this.width = $(element).width();
+      
+      console.log(this.width, this.element.clientWidth);
 
-      this.meter = new ProgressMeter(this.element[0]);
+      this.meter = new ProgressMeter(this.element);
     }
 
-    observe(manager) {
-      manager.progress(this.meter.update.bind(this.meter));
-
-      manager.on('queued', e => {
+    observe(manager: UploadManager) {
+      manager.on('progress', this.meter.update.bind(this.meter));
+      
+      manager.on('queue', e => {
         this.setUploads(e.uploads);
       });
     }
@@ -84,25 +80,25 @@ module Carbon {
       this.meter.reset();
     }
 
-    setUploads(files) {
-      this.width = this.element.width();
+    setUploads(uploads: Upload[]) {
+      this.width = $(this.element).width();
 
-      var condenceWidth = 50;
-      var colaposedWidth = 20;
+      let condenceWidth = 50;
+      let colaposedWidth = 20;
 
-      var condencedPercent = (condenceWidth / this.width);
-      var colaposedPercent = (colaposedWidth / this.width);
+      let condencedPercent = (condenceWidth / this.width);
+      let colaposedPercent = (colaposedWidth / this.width);
 
-      var filesEl = this.element.find('.files');
+      let filesEl = <HTMLElement>this.element.querySelector('.files');
 
-      filesEl.html('');
+      filesEl.innerHTML = '';
 
-      var totalSize = files.map(u => u.size).reduce((c, n) => c + n);
+      let totalSize = uploads.map(u => u.size).reduce((c, n) => c + n);
 
-      var fileTemplate = Carbon.Template.get('fileTemplate');
+      let fileTemplate = Carbon.Template.get('fileTemplate');
 
       // Figure out the widths
-      files.forEach(upload => {
+      uploads.forEach(upload => {
         upload.batchPercent = upload.size / totalSize;
 
         if (upload.batchPercent <= condencedPercent) {
@@ -110,22 +106,22 @@ module Carbon {
         }
       });
 
-      var nonCondeced = files.filter(u => !u.condenced);
+      let nonCondeced = files.filter(u => !u.condenced);
 
       // Pass 2
-      files.forEach(upload => {
+      uploads.forEach(upload => {
         if (nonCondeced.length == 0) {
-           upload.batchPercent = 1 / files.length;
+           upload.batchPercent = 1 / uploads.length;
         }
         else if (upload.condenced) {
-          var toGive = upload.batchPercent - colaposedPercent;
+          let toGive = upload.batchPercent - colaposedPercent;
 
           upload.batchPercent = colaposedPercent;
 
           upload.condenced = true;
 
           // Distribute equally amongest the non-condencesed uploads
-          var distribution = toGive / nonCondeced.length;
+          let distribution = toGive / nonCondeced.length;
 
           nonCondeced.forEach(b => {
             b.batchPercent += distribution;
@@ -134,20 +130,25 @@ module Carbon {
       });
 
       // Build up the DOM
-      files.forEach(file => {
-        var fileEl = fileTemplate.render({ name: file.name, size: FileUtil.formatBytes(file.size) });
+      uploads.forEach(file => {
+        let fileEl = <HTMLElement>fileTemplate.render({ 
+          name: file.name, 
+          size: FileUtil.formatBytes(file.size) 
+        });
 
-        fileEl.css('width', (file.batchPercent * 100) + '%');
+        fileEl.style.width = (file.batchPercent * 100) + '%';
 
         if (file.condenced) {
-          fileEl.addClass('condensed');
+          fileEl.classList.add('condensed');
         }
-
-        fileEl.appendTo(filesEl);
+        
+        filesEl.appendChild(fileEl);
 
         file.element = fileEl;
 
-        file.done(e => { file.element.addClass('completed'); });
+        file.defer.promise.then(e => { 
+          file.element.addClass('completed');
+         });
       });
     }
   }
@@ -166,32 +167,7 @@ module Carbon {
   </li>
   */
 
-  // Represents a synchronization primitive that is signaled when its count reaches zero.
-
-  class CountdownEvent {
-    currentCount: number;
-    defer: any;
-
-    constructor(initialCount) {
-      this.currentCount = initialCount || 0;
-
-      this.defer = new $.Deferred();
-
-      this.defer.promise(this);
-    }
-
-    addCount() {
-      this.currentCount++;
-    }
-
-    signal() {
-      this.currentCount--;
-
-      if(this.currentCount == 0) {
-        this.resolve();
-      }
-    }
-  }
+  // TODO: CountdownEvent (Represents a synchronization primitive that is signaled when its count reaches zero.)
 
   export class UploadBatch {
     queued: Array<Upload> = [];
@@ -202,14 +178,20 @@ module Carbon {
     }
   }
 
+  interface UploaderOptions {
+    url: string;
+    method?: string;
+    debug?: boolean;
+    uploadLimit?: number;
+    accept?: string[];
+    inputs?: any;
+  }
+  
   export class UploadManager {
-    static supported = !!(window.File && window.FileList && window.Blob && window.FileReader);
-
     status = UploadStatus.Pending;
-    defer: any;
     subscriptions = [];
 
-    options: any;
+    options: UploaderOptions;
 
     uploads: Array<Upload>;
     queue: Array<Upload>;
@@ -217,23 +199,19 @@ module Carbon {
     completedCount = 0;
     canceledCount = 0;
 
-    debug: boolean;
+    debug = false;
 
     uploadLimit: number;
 
-    accept: any;
+    accept: string[];
 
-    _progress: Progress;
+    progress: Progress;
 
     reactive = new Carbon.Reactive();
 
-    constructor(options = { }) {
-      this.options = options;
+    constructor(options: UploaderOptions) {
+      this.options = options || { url: '' };
       this.reset();
-
-      this.defer = new $.Deferred();
-
-      this.defer.promise(this);
 
       this.debug = this.options.debug || false;
 
@@ -255,8 +233,9 @@ module Carbon {
 
     on(nameOrObject, callback?: Function) {
       // { type: function, type: function } ...
+      
       if (typeof nameOrObject == 'object') {
-        var keys = Object.keys(nameOrObject);
+        let keys = Object.keys(nameOrObject);
 
         for (var i = 0; i < keys.length; i++) {
           var key = keys[i];
@@ -283,19 +262,17 @@ module Carbon {
       this.subscriptions.push(subscription);
     }
 
-    accepts(format) {
+    accepts(format: string) {
       if (!this.options.accept) return true;
 
       return this.options.accept.filter(f => f == format).length > 0;
     }
 
     queueFile(file) {
-      var upload = new Upload(file, this.options);
-
-      upload.manager = this;
+      let upload = new Upload(file, this.options);
 
       // Format check
-      if (!this.accepts(upload.getFormat())) {
+      if (!this.accepts(upload.format)) {
         upload.rejected = true;
         upload.rejectionReason = 'Unsupported';
       }
@@ -311,6 +288,12 @@ module Carbon {
         this.queue.push(upload);    // Add to queue
         this.uploads.push(upload);  // Add to uploads list
       }
+      
+      upload.on('cancel', () => {
+        console.log('upload canceled', this);
+        
+        this.removeUpload(upload);
+      });
 
       return upload;
     }
@@ -321,7 +304,7 @@ module Carbon {
       if (!files || files.length == 0) return batch;
 
       for (var i = 0, len = files.length; i < len; i++) {
-        var upload = this.queueFile(files[i]);
+        let upload = this.queueFile(files[i]);
 
         if (upload.rejected) {
           batch.rejected.push(upload);
@@ -331,14 +314,8 @@ module Carbon {
         }
       }
 
-      this._trigger({
-        type     : 'selection',
-        queued   : batch.queued,
-        rejected : batch.rejected
-      });
-
-      this._trigger({
-        type     : 'picked',
+      this.reactive.trigger({
+        type     : 'add',
         queued   : batch.queued,
         rejected : batch.rejected
       });
@@ -346,12 +323,12 @@ module Carbon {
       return batch;
     }
 
-    removeUpload(upload) {
+    removeUpload(upload: Upload) {
       this.queue.remove(upload);
       this.uploads.remove(upload);
 
       this.reactive.trigger({
-        type: 'uploadRemoved'
+        type: 'remove'
       }, upload);
     }
 
@@ -359,7 +336,7 @@ module Carbon {
       this.queue = [];
       this.uploads = [];
 
-      this._progress = new Progress(0, 0);
+      this.progress = new Progress(0, 0);
 
       this.completedCount = 0;
       this.canceledCount = 0;
@@ -369,7 +346,7 @@ module Carbon {
       }
     }
 
-    setUploadLimit(value) {
+    setUploadLimit(value: number) {
       this.uploadLimit = value;
 
       if (this.debug) {
@@ -380,7 +357,10 @@ module Carbon {
     start() {
       this.status = UploadStatus.Uploading; // processing
 
-      this.reactive.trigger({ type: 'started' });
+      this.reactive.trigger({
+        type: 'start',
+        instance: this
+      });
 
       this.uploadNext();
     }
@@ -389,51 +369,61 @@ module Carbon {
       if (this.queue.length == 0) {
         this.status = UploadStatus.Completed; // done
 
-        // We've completed the queue
-        this._trigger({
-          type    : 'done',
-          uploads : this.uploads
+        this.reactive.trigger({
+          type     : 'complete',
+          instance : this,
+          uploads  : this.uploads
         });
-
-        return;
+        
+        return; // We've completed the queue
       }
 
-      var upload = this.queue.shift();
+      let upload = this.queue.shift();
 
-      upload.progress(() => {
+      upload.on('progress', e => {
         var loaded = 0;
         var total = 0;
 
-        for (var i = 0, len = this.uploads.length; i < len; i++) {
-          loaded += this.uploads[i]._progress.loaded;
-          total  += this.uploads[i].size;
+        for (var upload of this.uploads) {
+          loaded += upload.progress.loaded;
+          total  += upload.size;
         }
 
-        this._progress.loaded = loaded;
-        this._progress.total = total;
-
-        this.defer.notify(this._progress);
+        this.progress.loaded = loaded;
+        this.progress.total = total;
+        
+        this.notify();
       });
 
-      upload.then(
-        () => { /*success*/
+      upload.start().then(
+         /*success*/ () => {
+           
+           console.log('upload completed');
+           
           this.completedCount++;
 
-          this.defer.notify(this._progress);
+          this.notify();
 
-          setTimeout(this.uploadNext.bind(this), 0);
+          this.uploadNext();
         },
-        () => { /*error*/
+        /*error*/ () => {
           this.canceledCount++;
-
+          
           // Upload canceled. Start the next one immediatly
-          this.defer.notify(this._progress);
+          this.notify();
 
-          setTimeout(this.uploadNext.bind(this), 0);
+          this.uploadNext();
         }
       );
-
-      upload.start();
+    }
+    
+    notify() {
+      this.reactive.trigger({ 
+        type   : 'progress',
+        loaded : this.progress.loaded,
+        total  : this.progress.total,
+        value  : this.progress.value 
+      });
     }
 
     cancel() {
@@ -442,12 +432,9 @@ module Carbon {
 
       this.status = UploadStatus.Canceled; // canceled
 
-      this._trigger({ type: 'canceled' });
+      this.reactive.trigger({ type: 'cancel' });
     }
 
-    _trigger(e, data?) {
-      this.reactive.trigger(e, data);
-    }
 
     dispose() {
       this.cancel();
@@ -471,22 +458,21 @@ module Carbon {
     name: string;
     size: number;
     type: string;
-    file; any;
+    file: any;
     status = UploadStatus.Pending;
     baseUri: string;
     url: string;
-    defer: any;
     retryCount: number = 0;
     method: string;
     debug = false;
     chunkSize = 5242880; // 5MB
-    _progress: Progress;
+    progress: Progress;
 
     offset: number;
     chunkNumber: number;
     chunkCount: number;
 
-    rejected?: boolean;
+    rejected = false;
     rejectionReason?: string;
 
     id: string;
@@ -494,7 +480,9 @@ module Carbon {
     xhr: XMLHttpRequest;
 
     reactive = new Carbon.Reactive();
-
+    
+    defer = new _.Deferred<any>();
+    
     constructor(file, options: UploadOptions) {
       if (!file) throw new Error('file is empty');
 
@@ -505,7 +493,7 @@ module Carbon {
       this.type = this.file.type; /* Mime type */
 
       // note: progress is already implemented by deferred
-      this._progress = new Progress(0, this.size);
+      this.progress = new Progress(0, this.size);
 
       // Options
 
@@ -513,69 +501,64 @@ module Carbon {
       this.url = options.url;
 
       this.baseUri = this.url;
-
-      this.defer = new $.Deferred();
-
-      this.defer.promise(this);
     }
 
     on(name, callback) {
       return this.reactive.on(name, callback);
     }
 
-    start() {
-      if (this.status >= 2) alert('already started');
-
-      if(this.type.indexOf('image') > -1) {
+    start() : Promise<UploadResponse> {
+      if (this.status >= 2) { 
+        return Promise.reject('[Upload] already started');
+      }
+     
+      if (this.type.indexOf('image') > -1) {
         this.chunkSize = this.size;
       }
 
       this.offset = 0;
       this.chunkNumber = 1;
       this.chunkCount = Math.ceil(this.size / this.chunkSize);
-
+        
       this.next();
 
       this.status = UploadStatus.Uploading;
 
-      this.reactive.trigger( { type: 'started' });
-
-      return this.defer;
+      this.reactive.trigger({ type: 'start' });
+  
+      return this.defer.promise;
     }
 
-    next() {
+    private next() {
       if (this.offset + 1 >= this.size) return;
 
       if (this.chunkCount > 1) {
-        console.log('"' + this.name + '" uploading ' + this.chunkNumber + ' of ' +  this.chunkCount + ' chunks.');
+        console.log(`'${this.name}' uploading ${this.chunkNumber} of ${this.chunkCount} chunks.`);
       }
 
-      var start = this.offset;
-      var end = this.offset + this.chunkSize;
+      let start = this.offset;
+      let end = this.offset + this.chunkSize;
 
       var data;
 
       if (this.file.slice) {
         data = this.file.slice(start, end);
       }
-      else if (this.file.mozSlice) {
-        data = this.file.mozSlice(start, end);
-      }
       else if (this.file.webkitSlice) {
         data = this.file.webkitSlice(start, end);
       }
 
-      var chunk = new UploadChunk(this, data);
-
-      chunk.progress(this.onProgress.bind(this));
+      let chunk = new UploadChunk(this, data);
+      
+      chunk.onprogress = this.onProgress.bind(this);
 
       chunk.send(this).then(
         /*success*/ this.onChunkUploaded.bind(this),
-        /*fail*/    this.onChunkFailed.bind(this)
+        /*error*/   this.onChunkFailed.bind(this)
       );
     }
 
-    onChunkFailed(chunk) {
+    private onChunkFailed(chunk: UploadChunk) {
       if (this.debug) {
         console.log('Chunk failed, auto retrying in 1s. ' + this.retryCount + ' of 3.');
       }
@@ -592,7 +575,7 @@ module Carbon {
       }
     }
 
-    onChunkUploaded(chunk) {
+    private onChunkUploaded(chunk: UploadChunk) {
       this.chunkNumber++;
       this.offset += chunk.size;
 
@@ -601,8 +584,13 @@ module Carbon {
 
       this.retryCount = 0;
 
-      // DONE!
       if (this.offset == this.size) {
+        
+        console.log('file uploaded', chunk);
+        // We're done
+        
+        this.reactive.trigger({ type: 'complete' });
+        
         this.defer.resolve(this.response);
       }
       else {
@@ -613,8 +601,36 @@ module Carbon {
       }
     }
 
+    // Overall progress
+    private onProgress(e: Progress) {
+      this.progress.loaded = e.loaded + this.offset;
+ 
+      this.reactive.trigger({
+        type: 'progress',
+        loaded: this.progress.loaded,
+        total: this.progress.total,
+        value: this.progress.value        
+      });
+    }
+
+    private onError(e) {
+      console.log('upload error', e);
+
+      this.status = UploadStatus.Error;
+
+      this.defer.reject();
+    }
+
+    private onAbort(e) {
+      this.status = UploadStatus.Canceled;
+
+      this.reactive.trigger({ type: 'abort' });
+
+      this.defer.reject();
+    }
+
     cancel() {
-      if(this.status == UploadStatus.Canceled) return;
+      if (this.status == UploadStatus.Canceled) return;
 
       if(this.xhr && this.status != 4) {
         this.xhr.abort();
@@ -622,48 +638,17 @@ module Carbon {
 
       this.status = UploadStatus.Canceled;
 
-      this.reactive.trigger({ type : 'canceled' });
-
-      this.defer.reject();
-
-      if(this.manager) {
-        this.manager.removeUpload(this);
-      }
-    }
-
-    // Overall progress
-    onProgress(e: Progress) {
-      this._progress.loaded = e.loaded + this.offset;
-
-      this.reactive.trigger({
-        type: 'progress'
-      }, this._progress);
-
-      this.defer.notify(this._progress);
-    }
-
-    onError(e) {
-      console.log('upload error', e);
-
-      this.status = UploadStatus.Error;
-      this.error = true;
+      this.reactive.trigger({ type : 'cancel' });
 
       this.defer.reject();
     }
 
-    onAbort(e) {
-      this.status = UploadStatus.Canceled;
-
-      this.reactive.trigger({ type: 'aborted' });
-
-      this.defer.reject();
-    }
 
     onChange(transport) {
       if (this.xhr.readyState !== 4) { }
     }
 
-    getFormat() {
+    get format() {
       return FileUtil.getFormatFromName(this.name).toLowerCase();
     }
 
@@ -677,20 +662,22 @@ module Carbon {
   }
 
   class UploadChunk {
+    status = UploadStatus.Pending;
     file: any;
     data: any;
     size: number;
     offset: number;
     number: number;
-    _progress: Progress;
-    status: number;
-    defer: any;
-
-    xhr: XMLHttpRequest;
+    progress: Progress;
+    onprogress: Function;
     response: any;
-
+    error: any;
+    
+    defer = new _.Deferred<UploadChunk>();
+    
     constructor(file, data) {
-      this.status = 1; // pending
+      if (data.size == 0) throw new Error('[Upload] data.size has no data')
+      
       this.file = file;
 
       this.data = data;
@@ -699,18 +686,11 @@ module Carbon {
       this.offset = file.offset;
       this.number = file.chunkNumber;
 
-      if(this.size == 0) throw new Error('No data')
-
-      // note: progress is already implemented by deferred
-      this._progress = new Progress(0, this.data.size);
-
-      this.defer = new $.Deferred();
-
-      this.defer.promise(this);
+      this.progress = new Progress(0, this.data.size);
     }
 
-    send(options) {
-      var xhr = new XMLHttpRequest();
+    send(options) : Promise<UploadChunk> {      
+      let xhr = new XMLHttpRequest();
 
       xhr.addEventListener('load'  , this.onLoad.bind(this),  false);
       xhr.addEventListener('error' , this.onError.bind(this), false);
@@ -720,38 +700,37 @@ module Carbon {
 
       xhr.open(options.method, options.url, true);
 
-      xhr.setRequestHeader('Content-Type'   , 'text/plain');                      // Required for safari
+      xhr.setRequestHeader('Content-Type' , 'text/plain');                        // Required for safari
 
-      // File details
-      xhr.setRequestHeader('X-File-Name' , encodeURI(this.file.name));            // Encode to support unicode 完稿.jpg
-      xhr.setRequestHeader('X-File-Type' , this.file.type.replace('//', '/'));
-      xhr.setRequestHeader('X-File-Size' , this.file.size);
+      // File details 
+      xhr.setRequestHeader('X-File-Name'   , encodeURI(this.file.name));            // Encode to support unicode 完稿.jpg
+      xhr.setRequestHeader('X-File-Type'   , this.file.type.replace('//', '/'));
+      xhr.setRequestHeader('X-File-Size'   , this.file.size);
 
       // Chunk details
       xhr.setRequestHeader('X-Chunk-Count'  , this.file.chunkCount);
-      xhr.setRequestHeader('X-Chunk-Offset' , this.offset);
-      xhr.setRequestHeader('X-Chunk-Size'   , this.size);
-      xhr.setRequestHeader('X-Chunk-Number' , this.number);
+      xhr.setRequestHeader('X-Chunk-Offset' , this.offset.toString());
+      xhr.setRequestHeader('X-Chunk-Size'   , this.size.toString());
+      xhr.setRequestHeader('X-Chunk-Number' , this.number.toString());
 
       xhr.send(/*blob*/ this.data);  // Chrome7, IE10, FF3.6, Opera 12
 
-      this.xhr = xhr;
-
       this.status = UploadStatus.Uploading;
-
-      return this.defer;
+      
+      return this.defer.promise;
     }
 
-    onProgress(/*XMLHttpRequestProgressEvent*/ e) {
+    private onProgress(e: ProgressEvent) {
       if (!e.lengthComputable) return;
 
-      this._progress.loaded = e.loaded;
+      this.progress.loaded = e.loaded;
 
-      this.defer.notify(this._progress);
+      if (this.onprogress) this.onprogress(this.progress);
     }
 
-    onLoad(e) {
-      var xhr = e.target;
+    private onLoad(e) {
+      console.log('loaded chuck', e);
+      let xhr = e.target;
 
       if (xhr.readyState !== 4) {
         this.onError(e);
@@ -759,37 +738,34 @@ module Carbon {
         return;
       }
 
-      this.status = xhr.status;
-
       // TODO: Make sure it's a valid status
 
-      this.response = xhr.response;
-
       // TODO: Check content type to make sure it's json
-      if(xhr.responseText) {
-        this.response = JSON.parse(xhr.responseText);
-      }
+    
+      this.response = JSON.parse(xhr.responseText);
 
-      this.status = 3; // done
-
-      if(xhr.status == 201) {
+      this.status = UploadStatus.Completed; 
+      
+      if (xhr.status == 201) {
         // Last one (Finalized)
       }
 
-      this._progress.loaded = this.size;
-
+      this.progress.loaded = this.size;
+      
       // Final progress notification
-      this.defer.notify(this._progress);
+      if (this.onprogress) this.onprogress(this.progress);
+      
       this.defer.resolve(this);
     }
 
-    onError(e) {
-       this.error = true;
-
+    private onError(e: ErrorEvent) {
+       this.status = UploadStatus.Error;
+       this.error = e.error;
+       
        this.defer.reject(this);
     }
 
-    onAbort(e) {
+    private onAbort(e) {
       this.status = UploadStatus.Canceled;
 
       this.defer.reject(this);
@@ -815,13 +791,13 @@ module Carbon {
     onDragEnter(e) {
       // entering target element
 
-      var target = e.target;
+      let target = <HTMLElement>e.target;
 
       var dropElement = this.getDropElement(target);
 
       if (dropElement) {
         // Force hide all other drop elements
-
+        
         $('.dragOver').removeClass('dragOver');
 
         dropElement.classList.add('dragOver');
@@ -835,56 +811,52 @@ module Carbon {
       e.dataTransfer.dropEffect = 'copy';
     }
 
-    onDragOver(e) {
+    onDragOver(e: DragEvent) {
       e.preventDefault(); // ondrop event will not fire in Firefox & Chrome without this
 
       e.dataTransfer.dropEffect = 'copy';
     }
 
-    onDragLeave(e) { // leaving target element
+    onDragLeave(e: DragEvent) { // leaving target element
       // console.log('enter', e.target);
 
       if (!this.currentDropElement) return;
 
-      var box = this.currentDropElement.getBoundingClientRect();
+      let box = this.currentDropElement.getBoundingClientRect();
 
       if ((e.y < box.top) || (e.y > box.bottom) || (e.x < box.left) || (e.x > box.right)) {
-        // console.log('leaving drop');
-
         this.currentDropElement.classList.remove('dragOver');
 
         this.currentDropElement = null;
       }
     }
 
-    onDrop(e) {
+    onDrop(e: DragEvent) {
       e.preventDefault();
 
       var files = e.dataTransfer.files;
       var items = e.dataTransfer.items;
-      var dropElement = this.getDropElement(e.target);
-
-      if(files.length > 0) {
-        Carbon.Reactive.trigger('drop', {
-          files   : files,
-          items   : items,
-          element : dropElement
-        });
-      }
+      var dropElement = this.getDropElement(<HTMLElement>e.target);
 
       if (dropElement) {
-        $(dropElement).triggerHandler({
-          type  : 'dropped',
-          items : items,
-          files : files
-        });
-
         dropElement.classList.remove('dragOver');
       }
+      
+      if (files.length == 0) return;
+      
+      let detail = {
+        files   : files,
+        items   : items,
+        element : dropElement || document.body
+      }
+      
+      _.trigger(detail.element, 'carbon:drop', detail);
+     
+      Carbon.Reactive.trigger('drop', detail);    
     }
 
-    getDropElement(target) {
-      if (target.getAttribute('on-drop') || target.getAttribute('carbon-drop')) return target;
+    getDropElement(target: HTMLElement) {
+      if (target.getAttribute('on-drop')) return target;
 
       // Look upto 5 level up
       for (var i = 0; i < 5; i++) {
@@ -892,7 +864,7 @@ module Carbon {
 
         if (!target) return null;
 
-        if (target.getAttribute('on-drop') || target.getAttribute('carbon-drop')) return target;
+        if (target.getAttribute('on-drop')) return target;
       }
 
       return null;
@@ -900,25 +872,36 @@ module Carbon {
   }
 
   export class FileDrop {
-    element: any;
+    element: HTMLElement;
     options: any;
 
     reactive = new Carbon.Reactive();
 
-  	constructor(element, options = { }) {
-  		this.element = $(element);
+  	constructor(element: HTMLElement|string, options = { }) {
+      if (typeof element === 'string') {
+        this.element = <HTMLElement>document.querySelector(element);
+      }
+      else {
+  		  this.element = <HTMLElement>element;
+      }
+      
+      if (!this.element) throw new Error('[FileDrop] element not found');
+      
+      console.log(this.element);
+           
       this.options = options;
 
-      if (this.element.hasClass('setup')) return;
+      if (this.element.classList.contains('setup')) return;
 
-      this.element.addClass('setup');
+      this.element.classList.add('setup');
 
-      if (!this.element.attr('on-drop')) {
-        this.element.attr('on-drop', 'pass');
+      if (!this.element.getAttribute('on-drop')) {
+        this.element.setAttribute('on-drop', 'pass');
       }
 
-      // dropped to not conflict with drop
-      this.element.on('dropped', this.onDropped.bind(this));
+      this.element.addEventListener('carbon:drop', (e: CustomEvent) => {
+        this.reactive.trigger(e.detail.files);
+      });
   	}
 
     subscribe(callback) {
@@ -930,29 +913,32 @@ module Carbon {
     setAccept(formats) {
       this.options.accept = formats;
     }
-
-  	onDropped(e) {
-      this.reactive.trigger(e.files);
-  	}
   }
 
   export class FileInput {
-    element: any;
+    element: HTMLInputElement;
     reactive = new Carbon.Reactive();
 
-    constructor(element, options) {
-      this.element = $(element);
-
-      if (this.element.length == 0) throw new Error('File input element not found');
-
-      this.element[0].addEventListener('change', this.onChange.bind(this), false);
-
-      if (options && options.accept) {
-        this.element.attr('accept', options.accept)
+    constructor(element: HTMLElement | string, options) {
+      if (typeof element === 'string') {
+        this.element = <HTMLInputElement>document.querySelector(element);
+      }
+      else {
+  		  this.element = <HTMLInputElement>element;
       }
 
-      if (options && options.multiple) {
-        this.element.attr('multiple', 'true');
+      if (!this.element) throw new Error('[FileInput] element not found');
+      
+      this.element.addEventListener('change', this.onChange.bind(this), false);
+
+      if (options) {
+        if (options.accept) {
+          this.element.setAttribute('accept', options.accept)
+        }
+
+        if (options.multiple) {
+          this.element.setAttribute('multiple', 'true');
+        }
       }
     }
 
@@ -965,16 +951,16 @@ module Carbon {
 
       // Clear the file input in all browsers except IE
       if (ua && ua.indexOf('MSIE') === -1) {
-        this.element.val('');
+        this.element.value = '';
       }
     }
 
-    setAccept(formats) {
-      this.element.attr('accept', formats.map(f => '.' + f).join(','));
+    setAccept(formats: string[]) {
+      this.element.setAttribute('accept', formats.map(f => '.' + f).join(','));
     }
 
-    onChange(e) {
-      var files = this.element[0].files;
+    onChange(e: Event) {
+      var files = this.element.files;
 
       if (files.length == 0) return;
 
@@ -1008,72 +994,64 @@ module Carbon {
       return URL.createObjectURL(this.file);
     }
 
-    load() {
+    load() : Promise<any> {
       // TODO: Subsample images in iOS
 
-      var defer = new $.Deferred();
-
       if(this.loaded) {
-        defer.resolve(this.image);
-
-        return defer;
+        return Promise.resolve(this.image);
       }
 
       // TODO: Ensure we we do not read while uploading
+      
+      return new Promise(function(resolve, reject) { 
+        var reader = new FileReader();
 
-      var reader = new FileReader();
+        reader.onloadend = () => {
+          this.image.src = reader.result;
 
-      reader.onloadend = () => {
-        this.image.src = reader.result;
+          this.image.onload = () => {
+            this.loaded = true;
 
-        this.image.onload = () => {
-          this.loaded = true;
+            resolve(this.image);
+          }
 
-          defer.resolve(this.image);
+          this.image.onerror = () => {
+            reject();
+          }
+        };
+
+        reader.onerror = () => { 
+          reject();
         }
 
-        this.image.onerror = () => {
-          defer.reject();
-        }
-      };
-
-      reader.onerror = () => {
-        defer.reject();
-      }
-
-      reader.readAsDataURL(this.file);
-
-      return defer;
+        reader.readAsDataURL(this.file);
+      });
     }
 
-    resize(maxWidth: number, maxHeight: number) {
+    resize(maxWidth: number, maxHeight: number) : PromiseLike<any> {
       // TODO: Apply EXIF rotation
 
-      var defer = new $.Deferred();
+      return this.load().then(image => {
+        let size = Util.fitIn(image.width, image.height, maxWidth, maxHeight);
 
-      this.load().then(image => {
-        var size = Util.fitIn(image.width, image.height, maxWidth, maxHeight);
-
-        var canvas = document.createElement('canvas');
+        let canvas = document.createElement('canvas');
 
         canvas.width = size.width;
         canvas.height = size.height;
 
-        var ctx = canvas.getContext("2d");
+        let ctx = canvas.getContext("2d");
 
         ctx.drawImage(image, 0, 0, size.width, size.height);
 
-        var data = canvas.toDataURL('image/png');
+        let data = canvas.toDataURL('image/png');
 
-        defer.resolve({
+        return Promise.resolve({
           width  : size.width,
           height : size.height,
           data   : data,
           url    : data
         });
       });
-
-      return defer;
     }
   }
 
@@ -1192,8 +1170,8 @@ module Carbon {
     url: string;
     status: UploadStatus;
     type: string;
-    _progress: Progress = new Progress(0, 100);
-    defer: any;
+    progress: Progress = new Progress(0, 100);
+    defer = new _.Deferred<any>();
     response: UploadResponse;
 
     reactive = new Carbon.Reactive();
@@ -1206,18 +1184,19 @@ module Carbon {
 
       this.type = fileFormats[format] + '/' + format;
 
-      this.defer = new $.Deferred();
-
-      this.defer.promise(this);
-
       // TODO, add id & open up web socket to monitor progress
     }
 
     onProgress(e) {
-      this._progress.loaded = e.loaded;
+      this.progress.loaded = e.loaded;
 
-      this.defer.notify(this._progress);
-
+      this.reactive.trigger({
+        type   : 'progress',
+        loaded : this.progress.loaded,
+        total  : this.progress.total,
+        value  : this.progress.value        
+      });
+      
       if (e.loaded < 100) {
         setTimeout(() => {
           this.onProgress({ loaded: e.loaded + 1 });
@@ -1225,20 +1204,28 @@ module Carbon {
       }
     }
 
-    on(name, callback) {
+    on(name: string, callback: Function) {
       this.reactive.on(name, callback);
     }
 
-    start() {
-      var ajax = $.post('https://uploads.carbonmade.com/', { url: this.url });
+    start() : Promise<UploadResponse> {
+      let request = fetch('https://uploads.carbonmade.com/', {
+        mode: 'cors',
+        method: 'POST',
+        body: `url=${this.url}`,
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/x-www-form-urlencoded'
+        }
+      }).then(response => response.json());
 
-      ajax.then(this.onDone.bind(this));
+      request.then(this.onDone.bind(this));
 
-      this.onProgress({ loaded: this._progress.loaded + 1 });
+      this.onProgress({ loaded: this.progress.loaded });
 
-      this.reactive.trigger({ type : 'started' });
+      this.reactive.trigger({ type : 'start' });
 
-      return this.defer;
+      return this.defer.promise;
     }
 
     onDone(data: UploadResponse) {
@@ -1247,5 +1234,36 @@ module Carbon {
 
       this.defer.resolve(data);
     }
+  }
+}
+
+module _ {
+  export class Deferred<T> {
+    private _resolve: Function;
+    private _reject: Function;
+    
+    promise: Promise<T>;
+    
+    constructor() {
+      this.promise = new Promise((resolve, reject) => {
+        this._resolve = resolve
+        this._reject = reject
+      });
+    }
+
+    resolve(value?: any) {
+      this._resolve(value);
+    }
+    
+    reject(value?: any) { 
+      this._reject(value);
+    }
+  }
+
+  export function trigger(element: Element | Window, name: string, detail?) : boolean {
+    return element.dispatchEvent(new CustomEvent(name, {
+      bubbles: true,
+      detail: detail
+    }));
   }
 }

@@ -9,6 +9,7 @@
   },
   "files": [
     "src/dropbox.chooser.ts",
-    "src/uploader.ts"
+    "src/uploader.ts",
+    "src/promise.d.ts"
   ]
 }

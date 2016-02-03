@@ -1,5 +1,10 @@
-# uploader
+# Uploader
+
+### Manager Events
+- add
+- remove
+- complete
+
 
 ### Dependencies
-- >= jQuery 1.11
-- >= Chrome 13, FF 10, IE10, Safari 5.1
+- >= Chrome 13, FF 20+, IE10, Safari 5.1
