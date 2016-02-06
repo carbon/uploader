@@ -1155,22 +1155,31 @@ module Carbon {
     reactive = new Carbon.Reactive();
     promise: Promise<any>;
     
-    size: number;
     name: string;
+    size: number;
     source: string;
     thumbnailUrl: string;
+    format: string;
     
-    constructor(url) {
+    constructor(url, options?: { name: string, size: number }) {
       this.url = url;
       this.status = 0;
-
-      let format = this.url.substring(this.url.lastIndexOf('.') + 1);
-
-      this.type = fileFormats[format] + '/' + format;
       
       this.promise = this.defer.promise;
       
-      // TODO, add id & open up web socket to monitor progress
+      if (options && options.name) {
+        this.name = options.name;
+        this.format = this.name.substring(this.name.lastIndexOf('.') + 1);
+      }
+      else {
+         this.format = this.url.substring(this.url.lastIndexOf('.') + 1);
+      }
+      
+      if (options && options.size) {
+        this.size = options.size;
+      }
+      
+      this.type = fileFormats[this.format] + '/' + this.format;
     }
 
     private onProgress(e) {
@@ -1194,7 +1203,7 @@ module Carbon {
       this.reactive.on(name, callback);
     }
 
-    start() : Promise<UploadResponse> {
+    start() : Promise<UploadResponse> {      
       let request = fetch('https://uploads.carbonmade.com/', {
         mode: 'cors',
         method: 'POST',
@@ -1207,6 +1216,8 @@ module Carbon {
 
       request.then(this.onDone.bind(this));
 
+      // TODO, add id & open up web socket to monitor progress
+      
       this.onProgress({ loaded: this.progress.loaded });
 
       this.reactive.trigger({ type : 'start' });
