@@ -10,6 +10,8 @@
   "files": [
     "src/dropbox.chooser.ts",
     "src/uploader.ts",
-    "src/promise.d.ts"
+    "src/promise.d.ts",
+    "src/carbon.d.ts",
+    "src/html.d.ts"
   ]
 }

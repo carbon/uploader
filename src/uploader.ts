@@ -25,7 +25,7 @@ module Carbon {
       this.barEl     = <HTMLElement>element.querySelector('.bar');
       this.percentEl = <HTMLElement>element.querySelector('.percent');
 
-      this.inversed = this.barEl.classList.contains('inversed');
+      this.inversed = this.barEl.matches('.inversed');
     }
 
     observe(manager: UploadManager) {
@@ -86,8 +86,8 @@ module Carbon {
       let condenceWidth = 50;
       let colaposedWidth = 20;
 
-      let condencedPercent = (condenceWidth / this.width);
-      let colaposedPercent = (colaposedWidth / this.width);
+      let condencedPercent = condenceWidth / this.width;
+      let colaposedPercent = colaposedWidth / this.width;
 
       let filesEl = <HTMLElement>this.element.querySelector('.files');
 
@@ -98,32 +98,32 @@ module Carbon {
       let fileTemplate = Carbon.Template.get('fileTemplate');
 
       // Figure out the widths
-      uploads.forEach(upload => {
-        upload.batchPercent = upload.size / totalSize;
+      uploads.forEach((file: any) => {
+        file.batchPercent = file.size / totalSize;
 
-        if (upload.batchPercent <= condencedPercent) {
-          upload.condenced = true;
+        if (file.batchPercent <= condencedPercent) {
+          file.condenced = true;
         }
       });
 
-      let nonCondeced = files.filter(u => !u.condenced);
+      let nonCondeced = uploads.filter((u: any) => !u.condenced);
 
       // Pass 2
-      uploads.forEach(upload => {
+      uploads.forEach((file: any) => {
         if (nonCondeced.length == 0) {
-           upload.batchPercent = 1 / uploads.length;
+           file.batchPercent = 1 / uploads.length;
         }
-        else if (upload.condenced) {
-          let toGive = upload.batchPercent - colaposedPercent;
+        else if (file.condenced) {
+          let toGive = file.batchPercent - colaposedPercent;
 
-          upload.batchPercent = colaposedPercent;
+          file.batchPercent = colaposedPercent;
 
-          upload.condenced = true;
+          file.condenced = true;
 
           // Distribute equally amongest the non-condencesed uploads
           let distribution = toGive / nonCondeced.length;
 
-          nonCondeced.forEach(b => {
+          nonCondeced.forEach((b: any) => {
             b.batchPercent += distribution;
           });
         }
@@ -184,7 +184,7 @@ module Carbon {
     debug?: boolean;
     uploadLimit?: number;
     accept?: string[];
-    inputs?: any;
+    inputs?: Picker[];
   }
   
   export class UploadManager {
@@ -225,30 +225,17 @@ module Carbon {
       }
 
       if (this.options.inputs) {
-        for (var i = 0; i < this.options.inputs.length; i++) {
-          this.addSource(this.options.inputs[i]);
+        for (var input of this.options.inputs) {
+          this.addSource(input);
         }
       }
     }
 
-    on(nameOrObject, callback?: Function) {
-      // { type: function, type: function } ...
-      
-      if (typeof nameOrObject == 'object') {
-        let keys = Object.keys(nameOrObject);
-
-        for (var i = 0; i < keys.length; i++) {
-          var key = keys[i];
-
-          this.reactive.on(key, nameOrObject[key]);
-        }
-      }
-      else {
-        return this.reactive.on(nameOrObject, callback);
-      }
+    on(type: string, callback: Function) {     
+      return this.reactive.on(type, callback); 
     }
 
-    addSource(source) {
+    addSource(source: Picker) {
       // sources may be file inputs or drops
 
       // Configure accept
@@ -256,7 +243,7 @@ module Carbon {
         source.setAccept(this.accept);
       }
 
-      var subscription = source.subscribe(this.addFiles.bind(this));
+      let subscription = source.subscribe(this.addFiles.bind(this));
 
       // Subscribe to the sources files
       this.subscriptions.push(subscription);
@@ -342,7 +329,11 @@ module Carbon {
       this.canceledCount = 0;
 
       if (this.options.inputs) {
-        this.options.inputs.forEach(u => { u.clear(); });
+        for (var picker in this.options.inputs) {  
+          if (picker.clear) {
+            picker.clear();
+          }
+        }
       }
     }
 
@@ -473,7 +464,7 @@ module Carbon {
     chunkCount: number;
 
     rejected = false;
-    rejectionReason?: string;
+    rejectionReason: string;
 
     id: string;
     response: any;
@@ -503,11 +494,11 @@ module Carbon {
       this.promise = this.defer.promise;
     }
 
-    on(name, callback) {
+    on(name: string, callback) {
       return this.reactive.on(name, callback);
     }
 
-    start() : Promise<UploadResponse> {
+    start(): Promise<UploadResponse> {
       if (this.status >= 2) { 
         return Promise.reject('[Upload] already started');
       }
@@ -869,7 +860,7 @@ module Carbon {
     }
   }
 
-  export class FileDrop {
+  export class FileDrop implements Picker {
     element: HTMLElement;
     options: any;
 
@@ -889,7 +880,7 @@ module Carbon {
            
       this.options = options;
 
-      if (this.element.classList.contains('setup')) return;
+      if (this.element.matches('.setup')) return;
 
       this.element.classList.add('setup');
 
@@ -968,7 +959,7 @@ module Carbon {
 
   export class FilePreview {
     file: any;
-    image: Image;
+    image: HTMLImageElement;
     type: string;
 
     loaded = false;
@@ -985,9 +976,6 @@ module Carbon {
       if (this.type.indexOf('image') < 0) {
         console.log('Expected image. Was ' + this.type);
       };
-
-      var URL = window.URL && window.URL.createObjectURL ? window.URL :
-        window.webkitURL && window.webkitURL.createObjectURL ? window.webkitURL : null;
 
       return URL.createObjectURL(this.file);
     }
@@ -1082,14 +1070,14 @@ module Carbon {
     scales: ['B', 'KB', 'MB', 'GB'],
 
     getFormatFromName(name: string) {
-      var split = name.split('.');
+      let split = name.split('.');
 
       return split[split.length - 1];
     },
 
     threeNonZeroDigits(value: number) {
-      if (value >= 100) return parseInt(value, 10);
-
+      if (value >= 100) return Math.floor(value);
+      
       if (value >= 10) {
         return Math.round(value * 10) / 10;
       }
@@ -1111,8 +1099,6 @@ module Carbon {
       return FileUtil.threeNonZeroDigits(value) + " " + FileUtil.scales[i];
     }
   };
-  // TODO: remove this
-  window.FileUtil = FileUtil;
 
   var fileFormats = {
     aac  : 'audio',
@@ -1174,11 +1160,16 @@ module Carbon {
     reactive = new Carbon.Reactive();
     promise: Promise<any>;
     
+    size: number;
+    name: string;
+    source: string;
+    thumbnailUrl: string;
+    
     constructor(url) {
       this.url = url;
       this.status = 0;
 
-      var format = this.url.substring(this.url.lastIndexOf('.') + 1);
+      let format = this.url.substring(this.url.lastIndexOf('.') + 1);
 
       this.type = fileFormats[format] + '/' + format;
       
@@ -1187,7 +1178,7 @@ module Carbon {
       // TODO, add id & open up web socket to monitor progress
     }
 
-    onProgress(e) {
+    private onProgress(e) {
       this.progress.loaded = e.loaded;
 
       this.reactive.trigger({
@@ -1234,6 +1225,12 @@ module Carbon {
 
       this.defer.resolve(data);
     }
+  }
+  
+  export interface Picker {
+    subscribe(callback: Function);
+    clear?();
+    setAccept?(formats: string[]);
   }
 }
 
