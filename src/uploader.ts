@@ -61,9 +61,7 @@ module Carbon {
 
     constructor(element: HTMLElement) {
       this.element = element;
-      this.width = $(element).width();
-      
-      console.log(this.width, this.element.clientWidth);
+      this.width = this.element.clientWidth;
 
       this.meter = new ProgressMeter(this.element);
     }
@@ -81,7 +79,7 @@ module Carbon {
     }
 
     setUploads(uploads: Upload[]) {
-      this.width = $(this.element).width();
+      this.width = this.element.clientWidth;
 
       let condenceWidth = 50;
       let colaposedWidth = 20;
@@ -256,7 +254,7 @@ module Carbon {
     }
 
     queueFile(file) {
-      let upload = new Upload(file, this.options);
+      let upload = file.promise ? file : new Upload(file, this.options);
 
       // Format check
       if (!this.accepts(upload.format)) {
@@ -425,7 +423,6 @@ module Carbon {
 
       this.reactive.trigger({ type: 'cancel' });
     }
-
 
     dispose() {
       this.cancel();
@@ -875,8 +872,6 @@ module Carbon {
       }
       
       if (!this.element) throw new Error('[FileDrop] element not found');
-      
-      console.log(this.element);
            
       this.options = options;
 
