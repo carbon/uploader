@@ -9,8 +9,8 @@
   },
   "files": [
     "src/uploader.ts",
-    "src/promise.d.ts",
+    "src/es6.d.ts",
     "src/carbon.d.ts",
-    "src/html.d.ts"
+    "src/fetch.d.ts"
   ]
 }

@@ -18,12 +18,12 @@ module Carbon {
 
   export class ProgressMeter {
     barEl: HTMLElement;
-    percentEl: HTMLElement;
+    percentEl: Element;
     inversed: boolean;
 
     constructor(element: HTMLElement) {
       this.barEl     = <HTMLElement>element.querySelector('.bar');
-      this.percentEl = <HTMLElement>element.querySelector('.percent');
+      this.percentEl = element.querySelector('.percent');
 
       this.inversed = this.barEl.matches('.inversed');
     }
@@ -87,7 +87,7 @@ module Carbon {
       let condencedPercent = condenceWidth / this.width;
       let colaposedPercent = colaposedWidth / this.width;
 
-      let filesEl = <HTMLElement>this.element.querySelector('.files');
+      let filesEl = this.element.querySelector('.files');
 
       filesEl.innerHTML = '';
 
@@ -129,7 +129,7 @@ module Carbon {
 
       // Build up the DOM
       uploads.forEach(file => {
-        let fileEl = <HTMLElement>fileTemplate.render({ 
+        let fileEl = fileTemplate.render({ 
           name: file.name, 
           size: FileUtil.formatBytes(file.size) 
         });
@@ -145,7 +145,7 @@ module Carbon {
         file.element = fileEl;
 
         file.defer.promise.then(e => { 
-          file.element.addClass('completed');
+          file.element.classList.add('completed');
          });
       });
     }
@@ -284,7 +284,7 @@ module Carbon {
     }
 
     addFiles(files: FileList) {
-      var batch = new UploadBatch();
+      let batch = new UploadBatch();
 
       if (!files || files.length == 0) return batch;
 
@@ -313,8 +313,9 @@ module Carbon {
       this.uploads.remove(upload);
 
       this.reactive.trigger({
-        type: 'remove'
-      }, upload);
+        type: 'remove',
+        upload: upload
+      });
     }
 
     reset() {
@@ -327,7 +328,7 @@ module Carbon {
       this.canceledCount = 0;
 
       if (this.options.inputs) {
-        for (var picker in this.options.inputs) {  
+        for (var picker of this.options.inputs) {  
           if (picker.clear) {
             picker.clear();
           }
@@ -500,7 +501,7 @@ module Carbon {
         return Promise.reject('[Upload] already started');
       }
      
-      if (this.type.indexOf('image') > -1) {
+      if (this.type.startsWith('image')) {
         this.chunkSize = this.size;
       }
 
@@ -527,7 +528,7 @@ module Carbon {
       let start = this.offset;
       let end = this.offset + this.chunkSize;
 
-      var data;
+      let data;
 
       if (this.file.slice) {
         data = this.file.slice(start, end);
@@ -766,28 +767,28 @@ module Carbon {
     currentDropElement: any;
 
     constructor() {
-      var el = document.body;
-
-      el.addEventListener('dragenter', this.onDragEnter.bind(this), false);
-      el.addEventListener('dragover',  this.onDragOver.bind(this),  false);
-      el.addEventListener('dragleave', this.onDragLeave.bind(this), false);
-      el.addEventListener('drop',      this.onDrop.bind(this),      false);
+      document.addEventListener('dragenter', this.onDragEnter.bind(this), false);
+      document.addEventListener('dragover',  this.onDragOver.bind(this),  false);
+      document.addEventListener('dragleave', this.onDragLeave.bind(this), false);
+      document.addEventListener('drop',      this.onDrop.bind(this),      false);
 
       this.currentDropElement = null;
     }
 
-    onDragEnter(e) {
+    onDragEnter(e: DragEvent) {
       // entering target element
 
-      let target = <HTMLElement>e.target;
+      let target = <Element>e.target;
 
       let dropElement = this.getDropElement(target);
 
       if (dropElement) {
         // Force hide all other drop elements
         
-        $('.dragOver').removeClass('dragOver');
-
+        Array.from(document.querySelectorAll('.dragOver')).forEach(el => {
+          el.classList.remove('dragOver');
+        });
+        
         dropElement.classList.add('dragOver');
 
         this.currentDropElement = dropElement;
@@ -821,10 +822,11 @@ module Carbon {
 
     onDrop(e: DragEvent) {
       e.preventDefault();
-
-      var files = e.dataTransfer.files;
-      var items = e.dataTransfer.items;
-      var dropElement = this.getDropElement(<HTMLElement>e.target);
+      
+      var target = <Element>e.target;
+      let files = e.dataTransfer.files;
+      let items = e.dataTransfer.items;
+      let dropElement = this.getDropElement(target);
 
       if (dropElement) {
         dropElement.classList.remove('dragOver');
@@ -841,7 +843,7 @@ module Carbon {
       _.trigger(detail.element, 'carbon:drop', detail);
     }
 
-    getDropElement(target: HTMLElement) {
+    getDropElement(target: Element) {
       if (target.getAttribute('on-drop')) return target;
 
       // Look upto 5 level up
@@ -858,17 +860,17 @@ module Carbon {
   }
 
   export class FileDrop implements Picker {
-    element: HTMLElement;
+    element: Element;
     options: any;
 
     reactive = new Carbon.Reactive();
 
-  	constructor(element: HTMLElement|string, options = { }) {
+  	constructor(element: Element|string, options = { }) {
       if (typeof element === 'string') {
-        this.element = <HTMLElement>document.querySelector(element);
+        this.element = document.querySelector(element);
       }
       else {
-  		  this.element = <HTMLElement>element;
+  		  this.element = element;
       }
       
       if (!this.element) throw new Error('[FileDrop] element not found');
@@ -903,7 +905,7 @@ module Carbon {
     element: HTMLInputElement;
     reactive = new Carbon.Reactive();
 
-    constructor(element: HTMLElement | string, options) {
+    constructor(element: Element | string, options) {
       if (typeof element === 'string') {
         this.element = <HTMLInputElement>document.querySelector(element);
       }
@@ -931,10 +933,8 @@ module Carbon {
     }
 
     clear() {
-      var ua = navigator.userAgent;
-
       // Clear the file input in all browsers except IE
-      if (ua && ua.indexOf('MSIE') === -1) {
+      if (navigator.userAgent && navigator.userAgent.indexOf('MSIE') === -1) {
         this.element.value = '';
       }
     }
@@ -944,7 +944,7 @@ module Carbon {
     }
 
     onChange(e: Event) {
-      var files = this.element.files;
+      let files = this.element.files;
 
       if (files.length == 0) return;
 
@@ -984,8 +984,8 @@ module Carbon {
 
       // TODO: Ensure we we do not read while uploading
       
-      return new Promise(function(resolve, reject) { 
-        var reader = new FileReader();
+      return new Promise((resolve, reject) => { 
+        let reader = new FileReader();
 
         reader.onloadend = () => {
           this.image.src = reader.result;
@@ -1042,7 +1042,7 @@ module Carbon {
     		return { width: width, height: height }
     	}
 
-   		var mutiplier = (maxWidth / width);
+   		let mutiplier = (maxWidth / width);
 
    		if (height * mutiplier <= maxHeight) {
   		  return {
@@ -1051,7 +1051,7 @@ module Carbon {
   		  }
      	}
   		else {
-      	var mutiplier = (maxHeight / height);
+      	mutiplier = (maxHeight / height);
 
        	return {
     		  width: Math.round(width * mutiplier),
@@ -1082,9 +1082,9 @@ module Carbon {
     },
 
     formatBytes(byteCount: number) {
-      var i = 0;
-      var base = 1000;
-      var value = byteCount;
+      let i = 0;
+      let base = 1000;
+      let value = byteCount;
 
       while ((base - 1) < value) {
         value /= base;
@@ -1203,7 +1203,7 @@ module Carbon {
       this.reactive.on(name, callback);
     }
 
-    start() : Promise<UploadResponse> {      
+    start(): PromiseLike<UploadResponse> {      
       let request = fetch('https://uploads.carbonmade.com/', {
         mode: 'cors',
         method: 'POST',
@@ -1289,7 +1289,7 @@ module Carbon {
 
     onSelection(files) {
       let uploads = files.map(file => {
-        var upload = new UrlUpload(file.link);
+        let upload = new UrlUpload(file.link);
         
         upload.size = file.size;
         upload.name = file.name;
