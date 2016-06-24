@@ -7,4 +7,4 @@
 
 
 ### Dependencies
-- >= Chrome 13, FF 20+, IE10, Safari 5.1
+- >= Chrome 30+, FF 20+, IE10, Safari 6+

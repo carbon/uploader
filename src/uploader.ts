@@ -34,7 +34,10 @@ module Carbon {
 
     reset() {
       this.barEl.style.width = '0%';
-      this.percentEl.innerHTML = '0%';
+
+      if (this.percentEl) {
+        this.percentEl.innerHTML = '0%';
+      }
     }
 
     update(progress: Progress) {
@@ -470,7 +473,7 @@ module Carbon {
 
     reactive = new Carbon.Reactive();
     
-    defer = new _.Deferred<any>();
+    defer = new Deferred<any>();
     promise: Promise<any>;
     
     constructor(file, options: UploadOptions) {
@@ -662,7 +665,7 @@ module Carbon {
     response: any;
     error: any;
     
-    defer = new _.Deferred<UploadChunk>();
+    defer = new Deferred<UploadChunk>();
     
     constructor(file, data) {
       if (data.size == 0) throw new Error('[Upload] data.size has no data')
@@ -840,7 +843,7 @@ module Carbon {
         element : dropElement || document.body
       }
       
-      _.trigger(detail.element, 'carbon:drop', detail);
+      trigger(detail.element, 'carbon:drop', detail);
     }
 
     getDropElement(target: Element) {
@@ -1150,7 +1153,7 @@ module Carbon {
     status: UploadStatus;
     type: string;
     progress: Progress = new Progress(0, 100);
-    defer = new _.Deferred<any>();
+    defer = new Deferred<any>();
     response: UploadResponse;
     reactive = new Carbon.Reactive();
     promise: Promise<any>;
@@ -1339,33 +1342,31 @@ module Carbon {
   }
 }
 
-module _ {
-  export class Deferred<T> {
-    private _resolve: Function;
-    private _reject: Function;
-    
-    promise: Promise<T>;
-    
-    constructor() {
-      this.promise = new Promise((resolve, reject) => {
-        this._resolve = resolve
-        this._reject = reject
-      });
-    }
-
-    resolve(value?: any) {
-      this._resolve(value);
-    }
-    
-    reject(value?: any) { 
-      this._reject(value);
-    }
+class Deferred<T> {
+  private _resolve: Function;
+  private _reject: Function;
+  
+  promise: Promise<T>;
+  
+  constructor() {
+    this.promise = new Promise((resolve, reject) => {
+      this._resolve = resolve
+      this._reject = reject
+    });
   }
 
-  export function trigger(element: Element | Window, name: string, detail?) : boolean {
-    return element.dispatchEvent(new CustomEvent(name, {
-      bubbles: true,
-      detail: detail
-    }));
+  resolve(value?: any) {
+    this._resolve(value);
   }
+  
+  reject(value?: any) { 
+    this._reject(value);
+  }
+}
+
+function trigger(element: Element | Window, name: string, detail?): boolean {
+  return element.dispatchEvent(new CustomEvent(name, {
+    bubbles: true,
+    detail: detail
+  }));
 }
