@@ -1,15 +1,11 @@
 {
   "name": "uploader",
-  "version": "2.0.8",
+  "version": "2.1.0",
   "main": "lib/uploader.js",
   "author": "Jason Nelson",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/carbon/uploader.git"
-  },
-  "bugs": {
-    "url": "https://github.com/carbon/uploader/issues"
-  },
-  "homepage": "https://github.com/carbon/uploader#readme"
+    "url": "https://github.com/carbon/uploader.git"
+  }
 }

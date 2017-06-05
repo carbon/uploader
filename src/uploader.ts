@@ -457,7 +457,7 @@ module Carbon {
     retryCount: number = 0;
     method: string;
     debug = false;
-    chunkSize = 5242880; // 5MB
+    chunkSize = 1024 * 1024 * 64; // 64MiB
     progress: Progress;
 
     offset: number;
@@ -473,6 +473,8 @@ module Carbon {
 
     reactive = new Carbon.Reactive();
     
+    element: HTMLElement;
+
     defer = new Deferred<any>();
     promise: Promise<any>;
     
@@ -699,11 +701,20 @@ module Carbon {
       xhr.setRequestHeader('X-File-Type'   , this.file.type.replace('//', '/'));
       xhr.setRequestHeader('X-File-Size'   , this.file.size);
 
+
+      let range = { 
+        start : this.offset,
+        end   : Math.min(this.offset + this.file.chunkSize, this.file.size)
+      };
+      
       // Chunk details
       xhr.setRequestHeader('X-Chunk-Count'  , this.file.chunkCount);
       xhr.setRequestHeader('X-Chunk-Offset' , this.offset.toString());
       xhr.setRequestHeader('X-Chunk-Size'   , this.size.toString());
       xhr.setRequestHeader('X-Chunk-Number' , this.number.toString());
+
+      // Content-Range : 0-10000
+      xhr.setRequestHeader('Content-Range', `${range.start}-${range.end}`);
 
       xhr.send(/*blob*/ this.data);  // Chrome7, IE10, FF3.6, Opera 12
 
@@ -980,7 +991,8 @@ module Carbon {
 
     load() : Promise<any> {
       // TODO: Subsample images in iOS
-
+      
+      
       if(this.loaded) {
         return Promise.resolve(this.image);
       }

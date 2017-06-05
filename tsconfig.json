@@ -5,12 +5,11 @@
     "removeComments": true,
     "watch": false,
     "sourceMap": false,
+    "lib": [ "dom", "es5", "es6" ],
     "outDir": "lib/"
   },
   "files": [
     "src/uploader.ts",
-    "src/es6.d.ts",
-    "src/carbon.d.ts",
-    "src/fetch.d.ts"
+    "src/carbon.d.ts"
   ]
 }
