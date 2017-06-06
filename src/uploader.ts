@@ -444,6 +444,7 @@ module Carbon {
   interface UploadOptions {
     url: string;
     method?: string;
+    chuckSize?: number;
   }
 
   export class Upload {
@@ -457,7 +458,7 @@ module Carbon {
     retryCount: number = 0;
     method: string;
     debug = false;
-    chunkSize = 1024 * 1024 * 64; // 64MiB
+    chunkSize = 1024 * 1024 * 5; // 5MiB
     progress: Progress;
 
     offset: number;
@@ -489,6 +490,10 @@ module Carbon {
 
       // note: progress is already implemented by deferred
       this.progress = new Progress(0, this.size);
+
+      if (options.chuckSize) {
+        this.chunkSize = options.chuckSize;
+      }
 
       this.method = options.method || 'POST';
       this.url = options.url;
@@ -756,7 +761,9 @@ module Carbon {
       this.progress.loaded = this.size;
       
       // Final progress notification
-      if (this.onprogress) this.onprogress(this.progress);
+      if (this.onprogress) {
+        this.onprogress(this.progress);
+      }
       
       this.defer.resolve(this);
     }
