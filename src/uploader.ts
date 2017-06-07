@@ -699,27 +699,26 @@ module Carbon {
 
       xhr.open(options.method, options.url, true);
 
-      xhr.setRequestHeader('Content-Type' , 'text/plain');                        // Required for safari
+      xhr.setRequestHeader('Content-Type' , this.file.type.replace('//', '/'));
 
       // File details 
-      xhr.setRequestHeader('X-File-Name'   , encodeURI(this.file.name));            // Encode to support unicode 完稿.jpg
-      xhr.setRequestHeader('X-File-Type'   , this.file.type.replace('//', '/'));
-      xhr.setRequestHeader('X-File-Size'   , this.file.size);
+      xhr.setRequestHeader('X-File-Name', encodeURI(this.file.name));            // Encode to support unicode 完稿.jpg
 
+      /*
+      X-Upload-Content-Type: image/jpeg
+      X-Upload-Content-Length: 2000000
+      */
 
       let range = { 
         start : this.offset,
-        end   : Math.min(this.offset + this.file.chunkSize, this.file.size)
+        end   : Math.min(this.offset + this.file.chunkSize, this.file.size),
+        total : this.file.size
       };
-      
-      // Chunk details
-      xhr.setRequestHeader('X-Chunk-Count'  , this.file.chunkCount);
-      xhr.setRequestHeader('X-Chunk-Offset' , this.offset.toString());
-      xhr.setRequestHeader('X-Chunk-Size'   , this.size.toString());
-      xhr.setRequestHeader('X-Chunk-Number' , this.number.toString());
+
+      // bytes 43-1999999/2000000
 
       // Content-Range : 0-10000
-      xhr.setRequestHeader('Content-Range', `${range.start}-${range.end}`);
+      xhr.setRequestHeader('Content-Range', `bytes ${range.start}-${range.end}/${range.total}`);
 
       xhr.send(/*blob*/ this.data);  // Chrome7, IE10, FF3.6, Opera 12
 
