@@ -434,17 +434,18 @@ module Carbon {
   }
 
   enum UploadStatus {
-    Pending = 1,
+    Pending   = 1,
     Uploading = 2,
     Completed = 3,
-    Canceled = 4,
-    Error = 5
+    Canceled  = 4,
+    Error     = 5
   }
 
   interface UploadOptions {
-    url: string;
-    method?: string;
-    chuckSize?: number;
+    url            : string;
+    authorization? : string;
+    method?        : string;
+    chuckSize?     : number;
   }
 
   export class Upload {
@@ -688,7 +689,9 @@ module Carbon {
       this.progress = new Progress(0, this.data.size);
     }
 
-    send(options) : Promise<UploadChunk> {      
+    send(options) : Promise<UploadChunk> {
+      // TODO: use fetch if supported natively...
+
       let xhr = new XMLHttpRequest();
 
       xhr.addEventListener('load'  , this.onLoad.bind(this),  false);
@@ -700,6 +703,10 @@ module Carbon {
       xhr.open(options.method, options.url, true);
 
       xhr.setRequestHeader('Content-Type' , this.file.type.replace('//', '/'));
+
+      if (options.authorization) {
+        xhr.setRequestHeader('Authorization', options.authorization)
+      }
 
       // File details 
       xhr.setRequestHeader('X-File-Name', encodeURI(this.file.name));            // Encode to support unicode 完稿.jpg
@@ -737,6 +744,7 @@ module Carbon {
 
     private onLoad(e) {
       console.log('loaded chuck', e);
+
       let xhr = e.target;
 
       if (xhr.readyState !== 4) {
