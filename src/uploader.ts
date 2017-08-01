@@ -456,6 +456,7 @@ module Carbon {
     status = UploadStatus.Pending;
     baseUri: string;
     url: string;
+    authorization: string;
     retryCount: number = 0;
     method: string;
     debug = false;
@@ -499,6 +500,7 @@ module Carbon {
       this.method = options.method || 'POST';
       this.url = options.url;
       this.baseUri = this.url;
+      this.authorization = options.authorization;
       
       this.promise = this.defer.promise;
     }
