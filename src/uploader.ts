@@ -829,7 +829,7 @@ module Carbon {
 
       e.dataTransfer.dropEffect = 'copy';
     
-      trigger(target, 'carbon:dragenter', { element: dropElement });
+      trigger(target, 'carbon:dragenter', { element: dropElement || document.body });
     }
 
     onDragOver(e: DragEvent) {
