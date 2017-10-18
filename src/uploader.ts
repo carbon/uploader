@@ -728,7 +728,7 @@ module Carbon {
 
       // Content-Range : 0-10000
       xhr.setRequestHeader('Content-Range', `bytes ${range.start}-${range.end}/${range.total}`);
-
+      
       xhr.send(/*blob*/ this.data);  // Chrome7, IE10, FF3.6, Opera 12
 
       this.status = UploadStatus.Uploading;
@@ -828,12 +828,16 @@ module Carbon {
       e.stopPropagation();
 
       e.dataTransfer.dropEffect = 'copy';
+    
+      trigger(target, 'carbon:dragenter', { element: dropElement });
     }
 
     onDragOver(e: DragEvent) {
       e.preventDefault(); // ondrop event will not fire in Firefox & Chrome without this
 
       e.dataTransfer.dropEffect = 'copy';
+
+      trigger(<Element>e.target, 'carbon:dragover');
     }
 
     onDragLeave(e: DragEvent) { // leaving target element
@@ -848,6 +852,8 @@ module Carbon {
 
         this.currentDropElement = null;
       }
+
+      trigger(<Element>e.target, 'carbon:dragleave');
     }
 
     onDrop(e: DragEvent) {
