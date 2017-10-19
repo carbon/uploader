@@ -799,9 +799,11 @@ module Carbon {
     constructor() {
       document.addEventListener('dragenter', this.onDragEnter.bind(this), false);
       document.addEventListener('dragover',  this.onDragOver.bind(this),  false);
-      document.addEventListener('dragleave', this.onDragLeave.bind(this), false);
+      document.addEventListener('dragleave', this.onDragLeave.bind(this), false);      
+      document.addEventListener('dragend',   this.onDragEnd.bind(this),      false);      
       document.addEventListener('drop',      this.onDrop.bind(this),      false);
-
+  
+      
       this.currentDropElement = null;
     }
 
@@ -837,7 +839,11 @@ module Carbon {
 
       e.dataTransfer.dropEffect = 'copy';
 
-      trigger(<Element>e.target, 'carbon:dragover');
+      trigger(<Element>e.target, 'carbon:dragover', {
+        originalEvent : e,
+        clientX       : e.clientX,
+        clientY       : e.clientY
+      });
     }
 
     onDragLeave(e: DragEvent) { // leaving target element
@@ -856,6 +862,12 @@ module Carbon {
       trigger(<Element>e.target, 'carbon:dragleave');
     }
 
+    onDragEnd(e) {
+      trigger(<Element>e.target, 'carbon:dragend', {
+        originalEvent : e
+      });
+    }
+    
     onDrop(e: DragEvent) {
       e.preventDefault();
       
