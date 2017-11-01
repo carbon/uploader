@@ -795,21 +795,23 @@ module Carbon {
     static instance = new DropHandler(); // Initilaize drop handler
 
     currentDropElement: any;
-
+    timeoutHandle: any;
+    dropped = null;
+    
     constructor() {
       document.addEventListener('dragenter', this.onDragEnter.bind(this), false);
       document.addEventListener('dragover',  this.onDragOver.bind(this),  false);
       document.addEventListener('dragleave', this.onDragLeave.bind(this), false);      
-      document.addEventListener('dragend',   this.onDragEnd.bind(this),      false);      
       document.addEventListener('drop',      this.onDrop.bind(this),      false);
-  
       
       this.currentDropElement = null;
+
+      console.log('registered drop handler', this);
     }
 
     onDragEnter(e: DragEvent) {
-      // entering target element
-
+      e.dataTransfer.dropEffect = 'copy';
+      
       let target = <Element>e.target;
 
       let dropElement = this.getDropElement(target);
@@ -825,20 +827,22 @@ module Carbon {
 
         this.currentDropElement = dropElement;
       }
-
-      e.preventDefault();
-      e.stopPropagation();
-
-      e.dataTransfer.dropEffect = 'copy';
     
-      trigger(target, 'carbon:dragenter', { element: dropElement || document.body });
+      trigger(target, 'carbon:dragenter', { 
+        element: dropElement || document.body,
+        originalEvent: e 
+      });
     }
 
     onDragOver(e: DragEvent) {
-      e.preventDefault(); // ondrop event will not fire in Firefox & Chrome without this
+      e.preventDefault(); // prevent default to allow drop
 
       e.dataTransfer.dropEffect = 'copy';
 
+      window.clearTimeout(this.timeoutHandle);
+      
+      this.timeoutHandle = window.setTimeout(this.onDragEnd.bind(this), 200);      
+      
       trigger(<Element>e.target, 'carbon:dragover', {
         originalEvent : e,
         clientX       : e.clientX,
@@ -847,8 +851,6 @@ module Carbon {
     }
 
     onDragLeave(e: DragEvent) { // leaving target element
-      // console.log('enter', e.target);
-
       if (!this.currentDropElement) return;
 
       let box = this.currentDropElement.getBoundingClientRect();
@@ -859,17 +861,15 @@ module Carbon {
         this.currentDropElement = null;
       }
 
-      trigger(<Element>e.target, 'carbon:dragleave');
-    }
-
-    onDragEnd(e) {
-      trigger(<Element>e.target, 'carbon:dragend', {
-        originalEvent : e
-      });
+      trigger(<Element>e.target, 'carbon:dragleave');      
     }
     
+    
+  
     onDrop(e: DragEvent) {
-      e.preventDefault();
+      e.preventDefault(); // prevent it from opening a link
+
+      this.dropped = true;
       
       var target = <Element>e.target;
       let files = e.dataTransfer.files;
@@ -888,7 +888,19 @@ module Carbon {
         element : dropElement || document.body
       }
       
+      this.dropped = detail;
+
       trigger(detail.element, 'carbon:drop', detail);
+    }
+
+    onDragEnd() {      
+      console.log('dragend');
+
+      trigger(document.body, 'carbon:dragend', {
+        dropped: this.dropped
+      });
+
+      this.dropped = null;
     }
 
     getDropElement(target: Element) {
@@ -1412,7 +1424,7 @@ class Deferred<T> {
 
 function trigger(element: Element | Window, name: string, detail?): boolean {
   return element.dispatchEvent(new CustomEvent(name, {
-    bubbles: true,
-    detail: detail
+    bubbles : true,
+    detail  : detail
   }));
 }
