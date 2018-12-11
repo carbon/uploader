@@ -454,7 +454,7 @@ module Carbon {
     status = UploadStatus.Pending;
     baseUri: string;
     url: string;
-    authorization: string;
+    authorization: string | { token: string };
     retryCount: number = 0;
     method: string;
     debug = false;
@@ -478,6 +478,7 @@ module Carbon {
 
     defer = new Deferred<any>();
     promise: Promise<any>;
+    xId: string;
     
     constructor(file, options: UploadOptions) {
       if (!file) throw new Error('file is empty');
@@ -498,6 +499,7 @@ module Carbon {
       this.method = options.method || 'POST';
       this.url = options.url;
       this.baseUri = this.url;
+      
       this.authorization = options.authorization;
       
       this.promise = this.defer.promise;
@@ -585,8 +587,7 @@ module Carbon {
         this.defer.resolve(this.response);
       }
       else {
-         // Update the url for subsequent uploads
-        this.url = this.baseUri + '?uploadId=' + this.response.id;
+        this.xId = this.response.id;
 
         this.next();
       }
@@ -634,7 +635,6 @@ module Carbon {
       this.defer.reject();
     }
 
-
     onChange(transport) {
       if (this.xhr.readyState !== 4) { }
     }
@@ -645,10 +645,6 @@ module Carbon {
 
     getFormattedSize() {
       return FileUtil.formatBytes(this.size);
-    }
-
-    getPreview() {
-      return new FilePreview(this.file);
     }
   }
 
@@ -680,7 +676,7 @@ module Carbon {
       this.progress = new Progress(0, this.data.size);
     }
 
-    send(options) : Promise<UploadChunk> {
+    send(options: Upload) : Promise<UploadChunk> {
       // TODO: use fetch if supported natively...
 
       let xhr = new XMLHttpRequest();
@@ -695,8 +691,17 @@ module Carbon {
 
       xhr.setRequestHeader('Content-Type' , this.file.type.replace('//', '/'));
 
+      if (options.xId) {
+        xhr.setRequestHeader('X-Upload-Id', options.xId);
+      }
+
       if (options.authorization) {
-        xhr.setRequestHeader('Authorization', options.authorization)
+          if (typeof options.authorization == 'string') {
+            xhr.setRequestHeader('Authorization', options.authorization);
+          } 
+          else {
+            xhr.setRequestHeader('Authorization', 'Bearer ' + options.authorization.token);
+          }
       }
 
       // File details 
@@ -855,8 +860,6 @@ module Carbon {
 
       trigger(<Element>e.target, 'carbon:dragleave');      
     }
-    
-    
   
     onDrop(e: DragEvent) {
       e.preventDefault(); // prevent it from opening a link
@@ -1004,90 +1007,6 @@ module Carbon {
     }
   }
 
-  export class FilePreview {
-    file: any;
-    image: HTMLImageElement;
-    type: string;
-
-    loaded = false;
-
-    constructor(file) {
-      this.file = file;
-
-      this.type = file.type;
-
-      this.image = new Image();
-    }
-
-    getURL() {
-      if (this.type.indexOf('image') < 0) {
-        console.log('Expected image. Was ' + this.type);
-      };
-
-      return URL.createObjectURL(this.file);
-    }
-
-    load() : Promise<any> {
-      // TODO: Subsample images in iOS
-      
-      
-      if(this.loaded) {
-        return Promise.resolve(this.image);
-      }
-
-      // TODO: Ensure we we do not read while uploading
-      
-      return new Promise((resolve, reject) => { 
-        let reader = new FileReader();
-
-        reader.onloadend = () => {
-          this.image.src = reader.result;
-
-          this.image.onload = () => {
-            this.loaded = true;
-
-            resolve(this.image);
-          }
-
-          this.image.onerror = () => {
-            reject();
-          }
-        };
-
-        reader.onerror = () => { 
-          reject();
-        }
-
-        reader.readAsDataURL(this.file);
-      });
-    }
-
-    resize(maxWidth: number, maxHeight: number) : PromiseLike<any> {
-      // TODO: Apply EXIF rotation
-
-      return this.load().then(image => {
-        let size = Util.fitIn(image.width, image.height, maxWidth, maxHeight);
-
-        let canvas = document.createElement('canvas');
-
-        canvas.width = size.width;
-        canvas.height = size.height;
-
-        let ctx = canvas.getContext("2d");
-
-        ctx.drawImage(image, 0, 0, size.width, size.height);
-
-        let data = canvas.toDataURL('image/png');
-
-        return Promise.resolve({
-          width  : size.width,
-          height : size.height,
-          data   : data,
-          url    : data
-        });
-      });
-    }
-  }
 
   var Util = {
     fitIn(width: number, height: number, maxWidth: number, maxHeight: number) {
@@ -1213,24 +1132,32 @@ module Carbon {
     source: string;
     thumbnailUrl: string;
     format: string;
+    authorization: { url: string, token: string }
     
-    constructor(url, options?: { name: string, size: number }) {
+    constructor(url, options: { 
+      name?: string, 
+      size?: number, 
+      authorization: { url: string, token: string }
+    }) {
       this.url = url;
       this.status = 0;
       
       this.promise = this.defer.promise;
       
-      if (options && options.name) {
+      if (options.name) {
         this.name = options.name;
         this.format = this.name.substring(this.name.lastIndexOf('.') + 1);
       }
       else {
          this.format = this.url.substring(this.url.lastIndexOf('.') + 1);
       }
-      
-      if (options && options.size) {
+     
+      this.authorization = options.authorization;
+
+      if (options.size) {
         this.size = options.size;
       }
+
       
       this.type = fileFormats[this.format] + '/' + this.format;
     }
@@ -1256,16 +1183,19 @@ module Carbon {
       this.reactive.on(name, callback);
     }
 
-    start(): PromiseLike<UploadResponse> {      
-      let request = fetch('https://uploads.carbonmade.com/', {
+    start(): PromiseLike<UploadResponse> {    
+
+      // TODO: Fix the url
+      let request = fetch(this.authorization.url, {
         mode: 'cors',
-        method: 'POST',
-        body: `url=${this.url}`,
+        method: 'PUT',
         headers: {
           'Accept': 'application/json',
-          'Content-Type': 'application/x-www-form-urlencoded'
+          'Authorization': 'Bearer ' + this.authorization.token,
+          'X-Copy-Source': this.url,
+          'Content-Type': 'application/octet-stream'
         }
-      }).then(response => response.json());
+      }).then(response => response.json())
 
       request.then(this.onDone.bind(this));
 
