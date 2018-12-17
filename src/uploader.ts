@@ -470,6 +470,7 @@ module Carbon {
 
     id: string;
     response: any;
+    result: any;
     xhr: XMLHttpRequest;
 
     reactive = new Carbon.Reactive();
@@ -1217,6 +1218,7 @@ module Carbon {
     onDone(data: UploadResponse) {
       this.status = UploadStatus.Completed;
       this.response = data;
+      this.result = data;
 
       this.defer.resolve(data);
     }
