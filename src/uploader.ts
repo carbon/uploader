@@ -469,7 +469,6 @@ module Carbon {
     rejectionReason: string;
 
     id: string;
-    response: any;
     result: any;
     xhr: XMLHttpRequest;
 
@@ -510,7 +509,7 @@ module Carbon {
       return this.reactive.on(name, callback);
     }
 
-    start(): Promise<UploadResponse> {
+    start(): Promise<UploadResult> {
       if (this.status >= 2) { 
         return Promise.reject('[Upload] already started');
       }
@@ -560,10 +559,10 @@ module Carbon {
       }
 
       // Retry
-      // TODO: Use expodential backoff
       if (this.retryCount < 3) {
         this.retryCount++;
 
+        // TODO: Use expodential backoff
         setTimeout(this.next.bind(this), 1000);
       }
       else {
@@ -575,8 +574,8 @@ module Carbon {
       this.chunkNumber++;
       this.offset += chunk.size;
 
-      this.response = chunk.response;
-      this.id = chunk.response.id;
+      this.result = chunk.result;
+      this.id = this.result.id;
 
       this.retryCount = 0;
 
@@ -585,10 +584,10 @@ module Carbon {
         
         this.reactive.trigger({ type: 'complete' });
         
-        this.defer.resolve(this.response);
+        this.defer.resolve(this.result);
       }
       else {
-        this.xId = this.response.id;
+        this.xId = this.result.id;
 
         this.next();
       }
@@ -611,14 +610,9 @@ module Carbon {
 
       this.status = UploadStatus.Error;
 
-      this.defer.reject();
-    }
+      this.reactive.trigger({ type: 'error' });
 
-    private onAbort(e) {
-      this.status = UploadStatus.Canceled;
-
-      this.reactive.trigger({ type: 'abort' });
-
+      // TODO: Abort
       this.defer.reject();
     }
 
@@ -636,7 +630,7 @@ module Carbon {
       this.defer.reject();
     }
 
-    onChange(transport) {
+    onChange() {
       if (this.xhr.readyState !== 4) { }
     }
 
@@ -658,7 +652,7 @@ module Carbon {
     number: number;
     progress: Progress;
     onprogress: Function;
-    response: any;
+    result: any;
     error: any;
     
     defer = new Deferred<UploadChunk>();
@@ -667,9 +661,7 @@ module Carbon {
       if (data.size == 0) throw new Error('[Upload] data.size has no data')
       
       this.file = file;
-
       this.data = data;
-
       this.size = data.size;
       this.offset = file.offset;
       this.number = file.chunkNumber;
@@ -708,11 +700,6 @@ module Carbon {
       // File details 
       xhr.setRequestHeader('X-File-Name', encodeURI(this.file.name));            // Encode to support unicode 完稿.jpg
 
-      /*
-      X-Upload-Content-Type: image/jpeg
-      X-Upload-Content-Length: 2000000
-      */
-
       let range = { 
         start : this.offset,
         end   : Math.min(this.offset + this.file.chunkSize, this.file.size),
@@ -750,12 +737,9 @@ module Carbon {
         return;
       }
 
-      // TODO: Make sure it's a valid status
+      // TODO: Make sure it was succesfull & the content type is JSON
 
-      // TODO: Check content type to make sure it's json
-    
-      this.response = JSON.parse(xhr.responseText);
-
+      this.result = JSON.parse(xhr.responseText);
       this.status = UploadStatus.Completed; 
       
       if (xhr.status == 201) {
@@ -1115,7 +1099,7 @@ module Carbon {
     swf  : 'application'
   };
 
-  interface UploadResponse {
+  interface UploadResult {
     id         : string,
     name       : string,
     size       : number,
@@ -1130,7 +1114,7 @@ module Carbon {
     type: string;
     progress: Progress = new Progress(0, 100);
     defer = new Deferred<any>();
-    response: UploadResponse;
+    result: UploadResult;
     reactive = new Carbon.Reactive();
     promise: Promise<any>;
     
@@ -1190,10 +1174,10 @@ module Carbon {
       this.reactive.on(name, callback);
     }
 
-    start(): PromiseLike<UploadResponse> {    
+    start(): PromiseLike<UploadResult> {    
 
       // TODO: Fix the url
-      let request = fetch(this.authorization.url, {
+      fetch(this.authorization.url, {
         mode: 'cors',
         method: 'PUT',
         headers: {
@@ -1202,10 +1186,10 @@ module Carbon {
           'X-Copy-Source': this.url,
           'Content-Type': 'application/octet-stream'
         }
-      }).then(response => response.json())
-
-      request.then(this.onDone.bind(this));
-
+      }).then(response => 
+        response.json()
+      ).then(this.onDone.bind(this));
+      
       // TODO, add id & open up web socket to monitor progress
       
       this.onProgress({ loaded: this.progress.loaded });
@@ -1215,9 +1199,8 @@ module Carbon {
       return this.defer.promise;
     }
 
-    onDone(data: UploadResponse) {
+    onDone(data: UploadResult) {
       this.status = UploadStatus.Completed;
-      this.response = data;
       this.result = data;
 
       this.defer.resolve(data);
