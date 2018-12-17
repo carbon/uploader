@@ -794,6 +794,7 @@ module Carbon {
     currentDropElement: any;
     timeoutHandle: any;
     dropped = null;
+    isActive = false;
     
     constructor() {
       document.addEventListener('dragenter', this.onDragEnter.bind(this), false);
@@ -802,8 +803,6 @@ module Carbon {
       document.addEventListener('drop',      this.onDrop.bind(this),      false);
       
       this.currentDropElement = null;
-
-      console.log('registered drop handler', this);
     }
 
     onDragEnter(e: DragEvent) {
@@ -816,9 +815,9 @@ module Carbon {
       if (dropElement) {
         // Force hide all other drop elements
         
-        Array.from(document.querySelectorAll('.dragOver')).forEach(el => {
+        for (var el of Array.from(document.querySelectorAll('.dragOver'))) {
           el.classList.remove('dragOver');
-        });
+        }
         
         dropElement.classList.add('dragOver');
 
@@ -832,6 +831,13 @@ module Carbon {
     }
 
     onDragOver(e: DragEvent) {
+
+      if (!this.isActive) {
+        trigger(document.body, 'carbon:dragstart');
+      }
+
+      this.isActive = true;
+
       e.preventDefault(); // prevent default to allow drop
 
       e.dataTransfer.dropEffect = 'copy';
@@ -866,7 +872,7 @@ module Carbon {
 
       this.dropped = true;
       
-      var target = <Element>e.target;
+      let target = <Element>e.target;
       let files = e.dataTransfer.files;
       let items = e.dataTransfer.items;
       let dropElement = this.getDropElement(target);
@@ -889,11 +895,11 @@ module Carbon {
     }
 
     onDragEnd() {      
-      console.log('dragend');
-
       trigger(document.body, 'carbon:dragend', {
         dropped: this.dropped
       });
+
+      this.isActive = false;
 
       this.dropped = null;
     }
