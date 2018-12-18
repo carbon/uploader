@@ -458,7 +458,7 @@ module Carbon {
     retryCount: number = 0;
     method: string;
     debug = false;
-    chunkSize = 1024 * 1024 * 5; // 5MiB
+    chunkSize = 1024 * 1024 * 32; // 32MiB chunks
     progress: Progress;
 
     offset: number;
