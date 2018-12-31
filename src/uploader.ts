@@ -890,9 +890,15 @@ module Carbon {
     }
 
     getDropElement(target: Element) {
+      let droppableEl = target.closest('.droppable');
+
+      if (droppableEl) {
+        return droppableEl;
+      }
+
       if (target.getAttribute('on-drop')) return target;
 
-      // Look upto 5 level up
+      // Look 5 levels up the DOM for a droppable element
       for (var i = 0; i < 5; i++) {
         target = target.parentElement;
 
@@ -929,6 +935,7 @@ module Carbon {
 
       if (!this.element.getAttribute('on-drop')) {
         this.element.setAttribute('on-drop', 'pass');
+        this.element.classList.add('droppable');
       }
 
       this.element.addEventListener('carbon:drop', (e: CustomEvent) => {
@@ -1125,7 +1132,7 @@ module Carbon {
     format: string;
     authorization: { url: string, token: string }
     
-    constructor(url, options: { 
+    constructor(url: string, options: { 
       name?: string, 
       size?: number, 
       authorization: { url: string, token: string }
@@ -1174,18 +1181,22 @@ module Carbon {
       this.reactive.on(name, callback);
     }
 
-    start(): PromiseLike<UploadResult> {    
+    start(): Promise<UploadResult> {
 
-      // TODO: Fix the url
+      let headers = {
+        'Accept': 'application/json',
+        'Authorization': 'Bearer ' + this.authorization.token,
+        'X-Copy-Source': this.url
+      };
+
+      if (this.name) {
+        headers['X-File-Name'] = this.name;
+      }
+
       fetch(this.authorization.url, {
-        mode: 'cors',
-        method: 'PUT',
-        headers: {
-          'Accept': 'application/json',
-          'Authorization': 'Bearer ' + this.authorization.token,
-          'X-Copy-Source': this.url,
-          'Content-Type': 'application/octet-stream'
-        }
+        mode    : 'cors',
+        method  : 'PUT',
+        headers : headers
       }).then(response => 
         response.json()
       ).then(this.onDone.bind(this));
