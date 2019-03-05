@@ -1,5 +1,3 @@
-"use strict";
-
 module Carbon {
   export class Progress {
     constructor(public loaded: number, public total: number) {
@@ -44,7 +42,7 @@ module Carbon {
       this.setValue(progress.value);
     }
 
-    setValue(value) {
+    setValue(value: number) {
       let percent = Math.round(value * 100);
 
       if (this.inversed) percent = 100 - percent;
@@ -512,10 +510,6 @@ module Carbon {
     start(): Promise<UploadResult> {
       if (this.status >= 2) { 
         return Promise.reject('[Upload] already started');
-      }
-     
-      if (this.type.startsWith('image')) {
-        this.chunkSize = this.size;
       }
 
       this.offset = 0;
@@ -1005,7 +999,6 @@ module Carbon {
     }
   }
 
-
   var Util = {
     fitIn(width: number, height: number, maxWidth: number, maxHeight: number) {
     	if (height <= maxHeight && width <= maxWidth) {
@@ -1072,10 +1065,12 @@ module Carbon {
     m4a  : 'audio',
     mp3  : 'audio',
     oga  : 'audio',
+    opus : 'audio',
     wav  : 'audio',
     wma  : 'audio',
 
     bmp  : 'image',
+    cr2  : 'image',
     jpg  : 'image',
     jpeg : 'image',
     gif  : 'image',
@@ -1085,6 +1080,8 @@ module Carbon {
     svg  : 'image',
     tif  : 'image',
     tiff : 'image',
+
+    usdz : 'model',
 
     avi  : 'video',
     f4v  : 'video',
@@ -1102,8 +1099,8 @@ module Carbon {
     wmv  : 'video',
 
     ai   : 'application',
-    pdf  : 'application',
-    swf  : 'application'
+    pdf  : 'application'
+
   };
 
   interface UploadResult {
@@ -1156,7 +1153,6 @@ module Carbon {
         this.size = options.size;
       }
 
-      
       this.type = fileFormats[this.format] + '/' + this.format;
     }
 

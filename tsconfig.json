@@ -1,6 +1,7 @@
 {
   "compilerOptions": {
     "target": "es5",
+    "alwaysStrict": true,
     "module": "commonjs",
     "removeComments": true,
     "watch": false,
