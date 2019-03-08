@@ -1104,13 +1104,19 @@ module Carbon {
     webm : 'video',
     wmv  : 'video',
 
+    eof   : 'font',
+    woff  : 'font',
+    woff2 : 'font',
+
     ai   : 'application',
     pdf  : 'application'
   };
 
   let mimes = {
-    usdz : 'model/vnd.usd+zip'
-  }
+    usdz  : 'model/vnd.usd+zip',
+    woff  : 'font/woff',
+    woff2 : 'font/woff2' 
+  };
 
   interface UploadResult {
     id         : string,
