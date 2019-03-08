@@ -676,7 +676,13 @@ module Carbon {
 
       xhr.open(options.method, options.url, true);
 
-      xhr.setRequestHeader('Content-Type' , this.file.type.replace('//', '/'));
+      let contentType = this.file.type
+        ? this.file.type.replace('//', '/')
+        : mimes[this.file.name.substring(this.file.name.lastIndexOf('.') + 1)];
+
+      if (contentType) {
+        xhr.setRequestHeader('Content-Type', contentType);
+      }
 
       if (options.xId) {
         xhr.setRequestHeader('X-Upload-Id', options.xId);
@@ -1100,8 +1106,11 @@ module Carbon {
 
     ai   : 'application',
     pdf  : 'application'
-
   };
+
+  let mimes = {
+    usdz : 'model/vnd.usd+zip'
+  }
 
   interface UploadResult {
     id         : string,
