@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html ondragend="dragend_handler(event);">
+
+<body ondragend="dragend_handler(event);">
+
+  <p class="drop" style="width:100px;height:100px;background-color:red;display:block;"></p>
+  <script>
+
+    var el = document.querySelector('.drop');
+
+
+    el.addEventListener('dragenter', function(e) {  }, false);
+    el.addEventListener('dragover',  function(e) { e.preventDefault(); /* to allow drop */ }, false);
+    el.addEventListener('dragleave', function(e) { },  false);
+    el.addEventListener('drop',      function(e) { console.log('drop',  e); e.preventDefault(); /* don't open link */ }, false);
+    el.addEventListener('dragend',   function(e) { console.log('end',   e) }, true);
+  
+  </script>
+        
+</body>
+
+</html>

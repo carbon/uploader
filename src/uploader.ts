@@ -206,6 +206,8 @@ module Carbon {
 
     progress: Progress;
 
+    maxSize = 5000000000; // 5GB
+
     reactive = new Carbon.Reactive();
 
     constructor(options: UploaderOptions) {
@@ -263,7 +265,12 @@ module Carbon {
         upload.rejectionReason = 'Unsupported';
       }
 
-      // Limit check
+      if (upload.size > this.maxSize) {
+        upload.rejected = true;
+        upload.rejectionReason = 'Too large';
+      }
+
+      // Max size check
       else if (this.uploads.length >= this.uploadLimit) {
         upload.rejected = true;
         upload.rejectionReason = 'Over limit';
@@ -386,10 +393,20 @@ module Carbon {
         this.notify();
       });
 
+      this.reactive.trigger({ 
+        type   : 'upload:start', 
+        upload : upload
+      });
+
       upload.start().then(
          /*success*/ () => {
            
           this.completedCount++;
+
+          this.reactive.trigger({ 
+            type   : 'upload:complete', 
+            upload : upload
+          });
 
           this.notify();
 
@@ -398,6 +415,11 @@ module Carbon {
         /*error*/ () => {
           this.canceledCount++;
           
+          this.reactive.trigger({ 
+            type   : 'upload:error',
+            upload : upload
+          });
+
           // Upload canceled. Start the next one immediatly
           this.notify();
 
@@ -729,7 +751,15 @@ module Carbon {
     private onLoad(e) {
       console.log('uploaded chuck', e);
 
-      let xhr = e.target;
+      let xhr: XMLHttpRequest = e.target;
+
+      // too large
+      if (xhr.status == 413) {
+        this.status = UploadStatus.Error;
+        this.error = { code: 413, message: 'Entity too large' };
+        
+        this.defer.reject(this);
+      }
 
       if (xhr.readyState !== 4) {
         this.onError(e);
@@ -1005,7 +1035,7 @@ module Carbon {
     }
   }
 
-  var Util = {
+  let Util = {
     fitIn(width: number, height: number, maxWidth: number, maxHeight: number) {
     	if (height <= maxHeight && width <= maxWidth) {
     		return { width: width, height: height }
@@ -1030,8 +1060,8 @@ module Carbon {
     }
   }
 
-  var FileUtil = {
-    scales: ['B', 'KB', 'MB', 'GB'],
+  let FileUtil = {
+    scales: [ 'B', 'KB', 'MB', 'GB' ],
 
     getFormatFromName(name: string) {
       let split = name.split('.');
@@ -1064,7 +1094,7 @@ module Carbon {
     }
   };
 
-  var fileFormats = {
+  let fileFormats = {
     aac  : 'audio',
     aiff : 'audio',
     flac : 'audio',
@@ -1208,9 +1238,7 @@ module Carbon {
         mode    : 'cors',
         method  : 'PUT',
         headers : headers
-      }).then(response => 
-        response.json()
-      ).then(this.onDone.bind(this));
+      }).then(response => response.json()).then(this.onDone.bind(this));
       
       // TODO, add id & open up web socket to monitor progress
       

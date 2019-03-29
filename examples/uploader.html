@@ -59,7 +59,6 @@ document.onload = function() {
     uploader.start();
   });
 
-
   uploader.on({
     complete(e) {
       alert('done');
@@ -69,17 +68,12 @@ document.onload = function() {
       console.log(e.uploads[0]);
         
       setTimeout(() => {
-
-        
         u.defer.promise.then(function() { 
           
             
         });
-        
+       
       }, 1000);
-      
-      
-  
     }
 
   
