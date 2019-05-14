@@ -54,7 +54,7 @@
 
     maxSize = 5000000000; // 5GB
 
-    reactive = new Carbon.Reactive();
+    reactive = new Reactive();
 
     constructor(options: UploaderOptions) {
       this.options = options || { url: '' };
@@ -338,7 +338,7 @@
     result: any;
     xhr: XMLHttpRequest;
 
-    reactive = new Carbon.Reactive();
+    reactive = new Reactive();
     
     element: HTMLElement;
 
@@ -651,7 +651,7 @@
 
   export class FileInput {
     element: HTMLInputElement;
-    reactive = new Carbon.Reactive();
+    reactive = new Reactive();
 
     constructor(element: Element | string, options) {
       if (typeof element === 'string') {
@@ -833,7 +833,7 @@
     }
 
     subscribe(callback, options?: ListenerOptions) {
-      let listener = new Carbon.Listener(callback, this, options);
+      let listener = new Listener(callback, this, options);
 
       this.listeners.push(listener);
 
