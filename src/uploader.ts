@@ -686,7 +686,7 @@ module Carbon {
     }
 
     send(options: Upload) : Promise<UploadChunk> {
-      // TODO: use fetch if supported natively...
+      // TODO: use fetch if supported natively
 
       let xhr = new XMLHttpRequest();
 
@@ -719,21 +719,20 @@ module Carbon {
           }
       }
 
-      // File details 
-      xhr.setRequestHeader('X-File-Name', encodeURI(this.file.name));            // Encode to support unicode 完稿.jpg
+      // File-Name (encoded to support unicode 完稿.jpg)
+      xhr.setRequestHeader('X-File-Name', encodeURI(this.file.name));     
 
       let range = { 
         start : this.offset,
-        end   : Math.min(this.offset + this.file.chunkSize, this.file.size),
+        end   : Math.min(this.offset + this.file.chunkSize, this.file.size) - 1,
         total : this.file.size
       };
 
       // bytes 43-1999999/2000000
 
-      // Content-Range : 0-10000
       xhr.setRequestHeader('Content-Range', `bytes ${range.start}-${range.end}/${range.total}`);
       
-      xhr.send(/*blob*/ this.data);  // Chrome7, IE10, FF3.6, Opera 12
+      xhr.send(/*blob*/ this.data); // Chrome7, IE10, FF3.6, Opera 12
 
       this.status = UploadStatus.Uploading;
       
@@ -1032,31 +1031,6 @@ module Carbon {
       if (files.length == 0) return;
 
       this.reactive.trigger(files);
-    }
-  }
-
-  let Util = {
-    fitIn(width: number, height: number, maxWidth: number, maxHeight: number) {
-    	if (height <= maxHeight && width <= maxWidth) {
-    		return { width: width, height: height }
-    	}
-
-   		let mutiplier = (maxWidth / width);
-
-   		if (height * mutiplier <= maxHeight) {
-  		  return {
-    		  width: maxWidth,
-    		  height: Math.round(height * mutiplier)
-  		  }
-     	}
-  		else {
-      	mutiplier = (maxHeight / height);
-
-       	return {
-    		  width: Math.round(width * mutiplier),
-    		  height:  maxHeight
-  		  }
-  		}
     }
   }
 
