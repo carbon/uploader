@@ -1,8 +1,8 @@
 {
   "compilerOptions": {
-    "target": "es5",
-    "alwaysStrict": true,
+    "target": "ES2017",
     "module": "commonjs",
+    "alwaysStrict": true,
     "removeComments": true,
     "watch": false,
     "sourceMap": false,
@@ -11,6 +11,7 @@
   },
   "files": [
     "src/uploader.ts",
+    "src/uploader.es6.ts",
     "src/carbon.d.ts"
   ]
 }

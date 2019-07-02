@@ -17,13 +17,14 @@ module Carbon {
   export class ProgressMeter {
     barEl: HTMLElement;
     percentEl: Element;
-    inversed: boolean;
 
     constructor(element: HTMLElement) {
-      this.barEl     = <HTMLElement>element.querySelector('.bar');
+      this.barEl     = element.querySelector('.bar');
       this.percentEl = element.querySelector('.percent');
+    }
 
-      this.inversed = this.barEl.matches('.inversed');
+    get inversed() {
+      return this.barEl.classList.contains('inversed')
     }
 
     observe(manager: UploadManager) {
@@ -57,14 +58,16 @@ module Carbon {
 
   export class BatchProgressMeter {
     element: HTMLElement;
-    width: number;
     meter: ProgressMeter;
 
     constructor(element: HTMLElement) {
       this.element = element;
-      this.width = this.element.clientWidth;
 
       this.meter = new ProgressMeter(this.element);
+    }
+
+    get width(): number {
+      return this.element.clientWidth;
     }
 
     observe(manager: UploadManager) {
@@ -79,9 +82,7 @@ module Carbon {
       this.meter.reset();
     }
 
-    setUploads(uploads: Upload[]) {
-      this.width = this.element.clientWidth;
-
+    async setUploads(uploads: Upload[]) {
       let condenceWidth = 50;
       let colaposedWidth = 20;
 
@@ -97,18 +98,18 @@ module Carbon {
       let fileTemplate = Carbon.Template.get('fileTemplate');
 
       // Figure out the widths
-      uploads.forEach((file: any) => {
+      for (var file of uploads) {
         file.batchPercent = file.size / totalSize;
 
         if (file.batchPercent <= condencedPercent) {
           file.condenced = true;
         }
-      });
+      }
 
       let nonCondeced = uploads.filter((u: any) => !u.condenced);
 
       // Pass 2
-      uploads.forEach((file: any) => {
+      for (var file of uploads) {
         if (nonCondeced.length == 0) {
            file.batchPercent = 1 / uploads.length;
         }
@@ -126,10 +127,10 @@ module Carbon {
             b.batchPercent += distribution;
           });
         }
-      });
+      }
 
       // Build up the DOM
-      uploads.forEach(file => {
+      for (var file of uploads) {
         let fileEl = fileTemplate.render({ 
           name: file.name, 
           size: FileUtil.formatBytes(file.size) 
@@ -145,10 +146,10 @@ module Carbon {
 
         file.element = fileEl;
 
-        file.defer.promise.then(e => { 
-          file.element.classList.add('completed');
-         });
-      });
+        await file.defer.promise;
+
+        file.element.classList.add('completed');
+      }
     }
   }
 
@@ -165,8 +166,6 @@ module Carbon {
     <span class="done">&#xe048;</span>
   </li>
   */
-
-  // TODO: CountdownEvent (Represents a synchronization primitive that is signaled when its count reaches zero.)
 
   export class UploadBatch {
     queued: Array<Upload> = [];
@@ -327,8 +326,8 @@ module Carbon {
     }
 
     reset() {
-      this.queue = [];
-      this.uploads = [];
+      this.queue = [ ];
+      this.uploads = [ ];
 
       this.progress = new Progress(0, 0);
 
@@ -346,13 +345,9 @@ module Carbon {
 
     setUploadLimit(value: number) {
       this.uploadLimit = value;
-
-      if (this.debug) {
-        console.log('Upload limit set: ' + value);
-      }
     }
 
-    start() {
+    async start() {
       this.status = UploadStatus.Uploading; // processing
 
       this.reactive.trigger({
@@ -360,25 +355,25 @@ module Carbon {
         instance: this
       });
 
-      this.uploadNext();
-    }
+      while (this.queue.length > 0) {
+        await this.uploadNext();
 
-    uploadNext() {
-      if (this.queue.length == 0) {
-        this.status = UploadStatus.Completed; // done
-
-        this.reactive.trigger({
-          type     : 'complete',
-          instance : this,
-          uploads  : this.uploads
-        });
-        
-        return; // We've completed the queue
+        this.onProgress();
       }
 
+      this.status = UploadStatus.Completed; // done
+
+      this.reactive.trigger({
+        type     : 'complete',
+        instance : this,
+        uploads  : this.uploads
+      });
+    }
+
+    async uploadNext() {
       let upload = this.queue.shift();
 
-      upload.on('progress', e => {
+      upload.on('progress', (e: any) => {
         var loaded = 0;
         var total = 0;
 
@@ -390,7 +385,7 @@ module Carbon {
         this.progress.loaded = loaded;
         this.progress.total = total;
         
-        this.notify();
+        this.onProgress();
       });
 
       this.reactive.trigger({ 
@@ -398,37 +393,27 @@ module Carbon {
         upload : upload
       });
 
-      upload.start().then(
-         /*success*/ () => {
-           
-          this.completedCount++;
+      try {
+        await upload.start();
 
-          this.reactive.trigger({ 
-            type   : 'upload:complete', 
-            upload : upload
-          });
+        this.completedCount++;
 
-          this.notify();
-
-          this.uploadNext();
-        },
-        /*error*/ () => {
-          this.canceledCount++;
+        this.reactive.trigger({ 
+          type   : 'upload:complete', 
+          upload : upload
+        });
+      }
+      catch (err) {
+        this.canceledCount++;
           
-          this.reactive.trigger({ 
-            type   : 'upload:error',
-            upload : upload
-          });
-
-          // Upload canceled. Start the next one immediatly
-          this.notify();
-
-          this.uploadNext();
-        }
-      );
+        this.reactive.trigger({ 
+          type   : 'upload:error',
+          upload : upload
+        });
+      }
     }
     
-    notify() {
+    onProgress() {
       this.reactive.trigger({ 
         type   : 'progress',
         loaded : this.progress.loaded,
@@ -439,7 +424,9 @@ module Carbon {
 
     cancel() {
       // Cancel any uploads in progress
-      this.uploads.forEach(u => { u.cancel(); });
+      for (var upload of this.uploads) {
+        upload.cancel();
+      }
 
       this.status = UploadStatus.Canceled; // canceled
 
@@ -547,7 +534,7 @@ module Carbon {
       return this.defer.promise;
     }
 
-    private next() {
+    private async next() {
       if (this.offset + 1 >= this.size) return;
 
       if (this.chunkCount > 1) {
@@ -563,10 +550,14 @@ module Carbon {
       
       chunk.onprogress = this.onProgress.bind(this);
 
-      chunk.send(this).then(
-        /*success*/ this.onChunkUploaded.bind(this),
-        /*error*/   this.onChunkFailed.bind(this)
-      );
+      try {
+        let result = await chunk.send(this);
+
+        await this.onChunkUploaded(result);
+      }
+      catch (err) {
+        this.onChunkFailed(chunk);
+      }   
     }
 
     private onChunkFailed(chunk: UploadChunk) {
@@ -578,7 +569,7 @@ module Carbon {
       if (this.retryCount < 3) {
         this.retryCount++;
 
-        // TODO: Use expodential backoff
+        // TODO: Use expodential backoff + randomness
         setTimeout(this.next.bind(this), 1000);
       }
       else {
@@ -987,7 +978,7 @@ module Carbon {
     element: HTMLInputElement;
     reactive = new Carbon.Reactive();
 
-    constructor(element: Element | string, options) {
+    constructor(element: HTMLInputElement | string, options) {
       if (typeof element === 'string') {
         this.element = <HTMLInputElement>document.querySelector(element);
       }
@@ -1046,12 +1037,9 @@ module Carbon {
     threeNonZeroDigits(value: number) {
       if (value >= 100) return Math.floor(value);
       
-      if (value >= 10) {
-        return Math.round(value * 10) / 10;
-      }
-      else {
-        return Math.round(value * 100) / 100;
-      }
+      return (value >= 10) 
+        ? Math.round(value * 10) / 10
+        : Math.round(value * 100) / 100;
     },
 
     formatBytes(byteCount: number) {
@@ -1078,7 +1066,7 @@ module Carbon {
     opus : 'audio',
     wav  : 'audio',
     wma  : 'audio',
-
+    
     bmp  : 'image',
     cr2  : 'image',
     jpg  : 'image',
@@ -1112,8 +1100,8 @@ module Carbon {
     woff  : 'font',
     woff2 : 'font',
 
-    ai   : 'application',
-    pdf  : 'application'
+    ai    : 'application',
+    pdf   : 'application'
   };
 
   let mimes = {
@@ -1196,8 +1184,7 @@ module Carbon {
       this.reactive.on(name, callback);
     }
 
-    start(): Promise<UploadResult> {
-
+    async start(): Promise<UploadResult> {
       let headers = {
         'Accept': 'application/json',
         'Authorization': 'Bearer ' + this.authorization.token,
@@ -1208,11 +1195,15 @@ module Carbon {
         headers['X-File-Name'] = this.name;
       }
 
-      fetch(this.authorization.url, {
+      let response = await fetch(this.authorization.url, {
         mode    : 'cors',
         method  : 'PUT',
         headers : headers
-      }).then(response => response.json()).then(this.onDone.bind(this));
+      });
+      
+      let result = await response.json();
+      
+      this.onDone(result);
       
       // TODO, add id & open up web socket to monitor progress
       
