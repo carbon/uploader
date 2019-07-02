@@ -171,9 +171,7 @@ module Carbon {
     queued: Array<Upload> = [];
     rejected: Array<Upload> = [];
 
-    constructor() {
-
-    }
+    constructor() { }
   }
 
   interface UploaderOptions {
@@ -496,7 +494,6 @@ module Carbon {
       this.size = this.file.size;
       this.type = this.file.type; /* Mime type */
 
-      // note: progress is already implemented by deferred
       this.progress = new Progress(0, this.size);
 
       if (options.chuckSize) {
@@ -512,11 +509,11 @@ module Carbon {
       this.promise = this.defer.promise;
     }
 
-    on(name: string, callback) {
+    on(name: string, callback: Function) {
       return this.reactive.on(name, callback);
     }
 
-    start(): Promise<UploadResult> {
+    async start(): Promise<UploadResult> {
       if (this.status >= 2) { 
         return Promise.reject('[Upload] already started');
       }
@@ -524,18 +521,39 @@ module Carbon {
       this.offset = 0;
       this.chunkNumber = 1;
       this.chunkCount = Math.ceil(this.size / this.chunkSize);
-        
-      this.next();
 
       this.status = UploadStatus.Uploading;
 
       this.reactive.trigger({ type: 'start' });
-  
-      return this.defer.promise;
+
+      try {
+        while (this.offset + 1 < this.size) {
+          await this.uploadNextChunk();
+        }
+      }
+      catch (err) {        
+        this.status = UploadStatus.Error;
+
+        this.reactive.trigger({ type: 'error' });
+
+        this.defer.reject();
+
+        throw(err);
+      }
+
+      this.status = UploadStatus.Completed;
+      
+      this.reactive.trigger({ type: 'complete' });
+        
+      this.defer.resolve(this.result);
+
+      return this.result;
     }
 
-    private async next() {
-      if (this.offset + 1 >= this.size) return;
+    private async uploadNextChunk() {
+      if (this.offset + 1 >= this.size) {
+        throw new Error('Already reached end');
+      }
 
       if (this.chunkCount > 1) {
         console.log(`'${this.name}' uploading ${this.chunkNumber} of ${this.chunkCount} chunks.`);
@@ -550,55 +568,20 @@ module Carbon {
       
       chunk.onprogress = this.onProgress.bind(this);
 
-      try {
-        let result = await chunk.send(this);
+      await chunk.send(this);
 
-        await this.onChunkUploaded(result);
-      }
-      catch (err) {
-        this.onChunkFailed(chunk);
-      }   
-    }
-
-    private onChunkFailed(chunk: UploadChunk) {
-      if (this.debug) {
-        console.log('Chunk failed, auto retrying in 1s. ' + this.retryCount + ' of 3.');
-      }
-
-      // Retry
-      if (this.retryCount < 3) {
-        this.retryCount++;
-
-        // TODO: Use expodential backoff + randomness
-        setTimeout(this.next.bind(this), 1000);
-      }
-      else {
-        this.onError(chunk);
-      }
-    }
-
-    private onChunkUploaded(chunk: UploadChunk) {
       this.chunkNumber++;
+
       this.offset += chunk.size;
 
       this.result = chunk.result;
+
       this.id = this.result.id;
-
-      this.retryCount = 0;
-
-      if (this.offset == this.size) {        
-        // We're done
-        
-        this.reactive.trigger({ type: 'complete' });
-        
-        this.defer.resolve(this.result);
+      
+      if (this.offset != this.size) {
+        this.xId = this.result.id; // not the last...
       }
-      else {
-        this.xId = this.result.id;
-
-        this.next();
-      }
-    }
+    }  
 
     // Overall progress
     private onProgress(e: Progress) {
@@ -610,17 +593,6 @@ module Carbon {
         total: this.progress.total,
         value: this.progress.value        
       });
-    }
-
-    private onError(e) {
-      console.log('upload error', e);
-
-      this.status = UploadStatus.Error;
-
-      this.reactive.trigger({ type: 'error' });
-
-      // TODO: Abort
-      this.defer.reject();
     }
 
     cancel() {
@@ -676,14 +648,31 @@ module Carbon {
       this.progress = new Progress(0, this.data.size);
     }
 
-    send(options: Upload) : Promise<UploadChunk> {
+    async send(options: Upload) : Promise<UploadChunk> {
+      // Send the chunk. Retry up-to 3 times
+
+      for (var i = 0; i < 3; i++) {
+        try {
+          return await this._send(options);
+        }
+        catch (err) { 
+          console.log('Chunk failed, retrying in 1s. ' + i + ' of 3.');
+
+          await delay(1000);
+        }
+      }
+
+      throw new Error('error uploading chunk');
+    }
+
+    _send(options: Upload) : Promise<UploadChunk> {
       // TODO: use fetch if supported natively
 
       let xhr = new XMLHttpRequest();
 
-      xhr.addEventListener('load'  , this.onLoad.bind(this),  false);
-      xhr.addEventListener('error' , this.onError.bind(this), false);
-      xhr.addEventListener('abort' , this.onAbort.bind(this), false);
+      xhr.addEventListener('load' , this.onLoad.bind(this),  false);
+      xhr.addEventListener('error', this.onError.bind(this), false);
+      xhr.addEventListener('abort', this.onAbort.bind(this), false);
 
       xhr.upload.addEventListener('progress', this.onProgress.bind(this), false);
 
@@ -1249,6 +1238,10 @@ class Deferred<T> {
   reject(value?: any) { 
     this._reject(value);
   }
+}
+
+function delay(ms: number) {
+  return new Promise(res => setTimeout(res, ms));
 }
 
 function trigger(element: Element | Window, name: string, detail?): boolean {
