@@ -680,10 +680,13 @@ module Carbon {
 
       let contentType = this.file.type
         ? this.file.type.replace('//', '/')
-        : mimes[this.file.name.substring(this.file.name.lastIndexOf('.') + 1)];
+        : mimeMap[this.file.name.substring(this.file.name.lastIndexOf('.') + 1)];
 
       if (contentType) {
         xhr.setRequestHeader('Content-Type', contentType);
+      }
+      else {
+        xhr.setRequestHeader('Content-Type', 'application/octet-stream');
       }
 
       if (options.xId) {
@@ -1093,10 +1096,16 @@ module Carbon {
     pdf   : 'application'
   };
 
-  let mimes = {
+  export let mimeMap = {
     usdz  : 'model/vnd.usd+zip',
     woff  : 'font/woff',
     woff2 : 'font/woff2' 
+  };
+
+  export var Mimes = {
+    register(format: string, type: string) {
+      Carbon.mimeMap[format] = type;
+    }
   };
 
   interface UploadResult {
