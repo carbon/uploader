@@ -3,6 +3,8 @@ declare module Carbon {
     on(name: string, callback: Function);
 
     trigger(any);
+    
+    subscribe(callback: Function);
   }
   
   export class Template {

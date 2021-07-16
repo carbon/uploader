@@ -66,7 +66,7 @@ module Carbon {
       this.meter = new ProgressMeter(this.element);
     }
 
-    get width(): number {
+    get width() {
       return this.element.clientWidth;
     }
 
@@ -110,7 +110,7 @@ module Carbon {
 
       // Pass 2
       for (var file of uploads) {
-        if (nonCondeced.length == 0) {
+        if (nonCondeced.length === 0) {
            file.batchPercent = 1 / uploads.length;
         }
         else if (file.condenced) {
@@ -250,7 +250,7 @@ module Carbon {
     accepts(format: string) {
       if (!this.options.accept) return true;
 
-      return this.options.accept.filter(f => f == format).length > 0;
+      return this.options.accept.filter(f => f === format).length > 0;
     }
 
     queueFile(file) {
@@ -291,7 +291,7 @@ module Carbon {
     addFiles(files: FileList) {
       let batch = new UploadBatch();
 
-      if (!files || files.length == 0) return batch;
+      if (!files || files.length === 0) return batch;
 
       for (var i = 0, len = files.length; i < len; i++) {
         let upload = this.queueFile(files[i]);
@@ -455,7 +455,7 @@ module Carbon {
     name: string;
     size: number;
     type: string;
-    file: any;
+    file: File;
     status = UploadStatus.Pending;
     baseUri: string;
     url: string;
@@ -485,7 +485,7 @@ module Carbon {
     promise: Promise<any>;
     xId: string;
     
-    constructor(file, options: UploadOptions) {
+    constructor(file: File, options: UploadOptions) {
       if (!file) throw new Error('file is empty');
 
       this.file = file;
@@ -596,12 +596,10 @@ module Carbon {
     }
 
     cancel() {
-      if (this.status == UploadStatus.Canceled) return;
+      if (this.status === UploadStatus.Canceled) return;
 
-      if(this.xhr && this.status != 4) {
-        this.xhr.abort();
-      }
-
+      this.xhr && this.xhr.abort();
+      
       this.status = UploadStatus.Canceled;
 
       this.reactive.trigger({ type : 'cancel' });
@@ -624,8 +622,8 @@ module Carbon {
 
   class UploadChunk {
     status = UploadStatus.Pending;
-    file: any;
-    data: any;
+    file: Upload;
+    data: Blob;
     size: number;
     offset: number;
     number: number;
@@ -636,9 +634,11 @@ module Carbon {
     
     defer = new Deferred<UploadChunk>();
     
-    constructor(file, data) {
-      if (data.size == 0) throw new Error('[Upload] data.size has no data')
-      
+    constructor(file: Upload, data: Blob) {
+      if (data.size === 0) {
+        throw new Error('[Upload] data.size has no data')
+      }
+
       this.file = file;
       this.data = data;
       this.size = data.size;
@@ -703,7 +703,7 @@ module Carbon {
       }
 
       // File-Name (encoded to support unicode 完稿.jpg)
-      xhr.setRequestHeader('X-File-Name', encodeURI(this.file.name));     
+      xhr.setRequestHeader('x-file-name', encodeURI(this.file.name));     
 
       let range = { 
         start : this.offset,
@@ -754,7 +754,7 @@ module Carbon {
       this.result = JSON.parse(xhr.responseText);
       this.status = UploadStatus.Completed; 
       
-      if (xhr.status == 201) {
+      if (xhr.status === 201) {
         // Last one (Finalized)
       }
       else {
@@ -778,7 +778,7 @@ module Carbon {
        this.defer.reject(this);
     }
 
-    private onAbort(e) {
+    private onAbort(e: Event) {
       this.status = UploadStatus.Canceled;
 
       this.defer.reject(this);
@@ -828,7 +828,6 @@ module Carbon {
     }
 
     onDragOver(e: DragEvent) {
-
       if (!this.isActive) {
         trigger(document.body, 'carbon:dragstart');
       }
@@ -878,7 +877,7 @@ module Carbon {
         dropElement.classList.remove('dragOver');
       }
       
-      if (files.length == 0) return;
+      if (files.length === 0) return;
       
       let detail = {
         files   : files,
@@ -897,7 +896,6 @@ module Carbon {
       });
 
       this.isActive = false;
-
       this.dropped = null;
     }
 
@@ -926,7 +924,6 @@ module Carbon {
   export class FileDrop implements Picker {
     element: Element;
     options: any;
-
     reactive = new Carbon.Reactive();
 
   	constructor(element: Element|string, options = { }) {
@@ -941,7 +938,7 @@ module Carbon {
            
       this.options = options;
 
-      if (this.element.matches('.setup')) return;
+      if (this.element.classList.contains('setup')) return;
 
       this.element.classList.add('setup');
 
@@ -955,7 +952,7 @@ module Carbon {
       });
   	}
 
-    subscribe(callback) {
+    subscribe(callback: Function) {
       return this.reactive.subscribe(callback);
     }
 
@@ -993,15 +990,12 @@ module Carbon {
       }
     }
 
-    subscribe(callback) {
+    subscribe(callback: Function) {
       return this.reactive.subscribe(callback);
     }
 
     clear() {
-      // Clear the file input in all browsers except IE
-      if (navigator.userAgent && navigator.userAgent.indexOf('MSIE') === -1) {
-        this.element.value = '';
-      }
+      this.element.value = '';      
     }
 
     setAccept(formats: string[]) {
@@ -1011,7 +1005,7 @@ module Carbon {
     onChange(e: Event) {
       let files = this.element.files;
 
-      if (files.length == 0) return;
+      if (files.length === 0) return;
 
       this.reactive.trigger(files);
     }
@@ -1065,6 +1059,8 @@ module Carbon {
     jpeg : 'image',
     gif  : 'image',
     ico  : 'image',
+    heic : 'image',
+    heif : 'image',
     png  : 'image',
     psd  : 'image',
     svg  : 'image',
@@ -1186,11 +1182,11 @@ module Carbon {
       let headers = {
         'Accept': 'application/json',
         'Authorization': 'Bearer ' + this.authorization.token,
-        'X-Copy-Source': this.url
+        'x-copy-source': this.url
       };
 
       if (this.name) {
-        headers['X-File-Name'] = this.name;
+        headers['x-file-name'] = this.name;
       }
 
       let response = await fetch(this.authorization.url, {
@@ -1202,9 +1198,7 @@ module Carbon {
       let result = await response.json();
       
       this.onDone(result);
-      
-      // TODO, add id & open up web socket to monitor progress
-      
+            
       this.onProgress({ loaded: this.progress.loaded });
 
       this.reactive.trigger({ type : 'start' });
@@ -1253,7 +1247,7 @@ function delay(ms: number) {
   return new Promise(res => setTimeout(res, ms));
 }
 
-function trigger(element: Element | Window, name: string, detail?): boolean {
+function trigger(element: Element | Window, name: string, detail?: string): boolean {
   return element.dispatchEvent(new CustomEvent(name, {
     bubbles : true,
     detail  : detail
