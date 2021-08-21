@@ -11,7 +11,6 @@
   },
   "files": [
     "src/uploader.ts",
-    "src/uploader.es6.ts",
     "src/carbon.d.ts"
   ]
 }
