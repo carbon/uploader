@@ -515,7 +515,7 @@ module Carbon {
 
     async start(): Promise<UploadResult> {
       if (this.status >= 2) { 
-        return Promise.reject('[Upload] already started');
+        throw new Error('[Upload] already started');
       }
 
       this.offset = 0;
