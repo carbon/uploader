@@ -1,87 +1,71 @@
 <html>
 
+  <body>
+  <h1>Start 1</h1>
 
-<body>
-<h1>Start 1</h1>
+  <script src="https://static.cmcdn.net/libs/corejs/2.6.0/corejs.js"></script>
+  <script src="../lib/uploader.js"></script>
 
-<script src="	https://da12rf4xga553.cloudfront.net/libs/basejs/1.2.0/basejs.js"></script>
-<script src="https://da12rf4xga553.cloudfront.net/libs/corejs/1.2.1/corejs.js"></script>
-<script src="../lib/uploader.js"></script>
+  <div id="drop" style="background-color:#ccc;height:500px;width:500px;">
+    <input type="file" />
+  </div>
 
-<div id="drop" style="background-color:#ccc;height:500px;width:500px;">
-  <input type="file" />
-</div>
-
-
-<div class="progress">
-  <div><span class="loaded"></span> / <span class="total"></span></div>
-  
-  <span class="percentage"></span>
-</div>
-
-<script>
-
-console.log('a');
-
-  document.addEventListener('carbon:dragend', function() {
-
-    console.log('drag end a');
-  });
-  document.addEventListener('carbon:drop', function() {
-
-    console.log('drop a');
-  });
-
-
-
-
-document.onload = function() {
-  var uploader = new Carbon.UploadManager({ 
-    url         : 'https://uploads.carbonmade.com/',
-    method      : 'POST',
-    uploadLimit : 100
-  });
-
-
-
-  uploader.addSource(new Carbon.FileDrop('#drop'));
-  uploader.addSource(new Carbon.FileInput('input'), { accept: 'image/*', multiple: true });
-
-  uploader.on('progress', e => {
-    $('.progress .loaded').text(e.loaded);
-    $('.progress .total').text(e.total);
-    $('.progress .percentage').text(Math.round(e.value * 100));
-  });
-
-  uploader.on('add', e => {
-    console.log('added', e);
+  <div class="progress">
+    <div><span class="loaded"></span> / <span class="total"></span></div>
     
-    uploader.start();
+    <span class="percentage"></span>
+  </div>
+
+  <script>
+
+  document.addEventListener('carbon:dragend', (e) => {
+    console.log('drag end', e);
   });
 
-  uploader.on({
-    complete(e) {
-      alert('done');
+  document.addEventListener('carbon:drop', (e) => {
+    console.log('drop', e);
+  });
+
+  document.onload = function() {
+    var uploader = new Carbon.UploadManager({ 
+      url         : 'https://uploads.carbonmade.com/',
+      method      : 'POST',
+      uploadLimit : 100
+    });
+
+    uploader.addSource(new Carbon.FileDrop('#drop'));
+    uploader.addSource(new Carbon.FileInput('input'), { accept: 'image/*', multiple: true });
+
+    uploader.on('progress', e => {
+      $('.progress .loaded').text(e.loaded);
+      $('.progress .total').text(e.total);
+      $('.progress .percentage').text(Math.round(e.value * 100));
+    });
+
+    uploader.on('add', e => {
+      console.log('added', e);
       
-      var u = e.uploads[0];
-      
-      console.log(e.uploads[0]);
+      uploader.start();
+    });
+
+    uploader.on({
+      complete(e) {
+        alert('done');
         
-      setTimeout(() => {
-        u.defer.promise.then(function() { 
+        var u = e.uploads[0];
+        
+        console.log(e.uploads[0]);
           
-            
-        });
-       
-      }, 1000);
-    }
+        setTimeout(() => {
+          u.defer.promise.then(function() { 
+          });
+        
+        }, 1000);
+      }
+    });
+  }
 
-  
+  </script>
 
-  });
-}
-
-</script>
-
-</body>
+  </body>
 </html>
