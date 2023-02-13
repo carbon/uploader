@@ -50,7 +50,7 @@ module Carbon {
 
       this.barEl.style.width = percent + '%';
 
-      if(this.percentEl) {
+      if (this.percentEl) {
         this.percentEl.innerHTML = percent + '%';
       }
     }
@@ -1053,6 +1053,7 @@ module Carbon {
     wav  : 'audio',
     wma  : 'audio',
     
+    avif : 'image',
     bmp  : 'image',
     cr2  : 'image',
     jpg  : 'image',
