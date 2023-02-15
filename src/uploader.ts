@@ -19,7 +19,7 @@ module Carbon {
     percentEl: Element;
 
     constructor(element: HTMLElement) {
-      this.barEl     = element.querySelector('.bar');
+      this.barEl = element.querySelector('.bar');
       this.percentEl = element.querySelector('.percent');
     }
 
@@ -680,7 +680,7 @@ module Carbon {
 
       let contentType = this.file.type
         ? this.file.type.replace('//', '/')
-        : mimeMap[this.file.name.substring(this.file.name.lastIndexOf('.') + 1)];
+        : Mime.fromName(this.file.name);
 
       if (contentType) {
         xhr.setRequestHeader('Content-Type', contentType);
@@ -690,7 +690,7 @@ module Carbon {
       }
 
       if (options.xId) {
-        xhr.setRequestHeader('X-Upload-Id', options.xId);
+        xhr.setRequestHeader('x-upload-id', options.xId);
       }
 
       if (options.authorization) {
@@ -1042,7 +1042,7 @@ module Carbon {
     }
   };
 
-  let fileFormats = {
+  let formatMap = {
     aac  : 'audio',
     aiff : 'audio',
     flac : 'audio',
@@ -1053,22 +1053,25 @@ module Carbon {
     wav  : 'audio',
     wma  : 'audio',
     
-    avif : 'image',
-    bmp  : 'image',
-    cr2  : 'image',
-    jpg  : 'image',
-    jpeg : 'image',
-    gif  : 'image',
-    ico  : 'image',
-    heic : 'image',
-    heif : 'image',
-    png  : 'image',
-    psd  : 'image',
-    svg  : 'image',
-    tif  : 'image',
-    tiff : 'image',
+    avif  : 'image',
+    avifs : 'image',
+    bmp   : 'image',
+    cr2   : 'image',
+    jpg   : 'image',
+    jpeg  : 'image',
+    jxl   : 'image',
+    gif   : 'image',
+    ico   : 'image',
+    heic  : 'image',
+    heif  : 'image',
+    png   : 'image',
+    psd   : 'image',
+    svg   : 'image',
+    tif   : 'image',
+    tiff  : 'image',
+    webp  : 'image',
 
-    usdz : 'model',
+    usdz  : 'model',
 
     avi  : 'video',
     f4v  : 'video',
@@ -1090,20 +1093,67 @@ module Carbon {
     woff2 : 'font',
 
     ai    : 'application',
-    pdf   : 'application'
+    pdf   : 'application',
+    wasm  : 'application'
   };
 
-  export let mimeMap = {
+  let mimeMap = {
+    jxl   : 'image/jxl',
     usdz  : 'model/vnd.usd+zip',
     woff  : 'font/woff',
-    woff2 : 'font/woff2' 
+    woff2 : 'font/woff2'
   };
 
-  export var Mimes = {
+  export var Mime = {
     register(format: string, type: string) {
-      Carbon.mimeMap[format] = type;
+      mimeMap[format] = type;
+    },
+
+    fromName(name: string) {
+      let format = FileUtil.getFormatFromName(name);
+      
+      return Mime.fromFormat(format);
+    },
+
+    fromFormat(format: string) {
+      if (mimeMap[format]) {
+        return mimeMap[format];
+      }
+
+      let type = formatMap[format];
+
+      if (type === undefined) return null;
+
+      return type + '/' + format;
+    },
+    
+    async detect(blob: Blob): Promise<string | null> {
+      let buffer = await blob.slice(0, 4).arrayBuffer();
+        
+      let hex = toHexString(new Uint8Array(buffer));
+
+      switch (hex) {
+        case '89504e47':
+          return 'image/png'
+        case '47494638':
+          return 'image/gif'
+        case '25504446':
+          return 'application/pdf'
+        case 'ffd8ffdb':
+        case 'ffd8ffe0':
+        case 'ffd8ffe1':
+          return 'image/jpeg'
+        default:
+          return null;
+      }
     }
   };
+
+  function toHexString(bytes: Uint8Array) {
+      return Array.from(bytes)
+        .map(i => i.toString(16).padStart(2, '0'))
+        .join('');
+  }
 
   interface UploadResult {
     id         : string,
@@ -1155,7 +1205,7 @@ module Carbon {
         this.size = options.size;
       }
 
-      this.type = fileFormats[this.format] + '/' + this.format;
+      this.type = Mime.fromFormat(this.format);
     }
 
     private onProgress(e) {
